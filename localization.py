@@ -114,6 +114,8 @@ class LocalizationManager:
             'udcp_step_desc': 'Amélioration spécialisée pour images sous-marines',
             'beer_lambert_step_title': 'Correction Beer-Lambert',
             'beer_lambert_step_desc': 'Correction de l\'atténuation en profondeur selon la loi de Beer-Lambert',
+            'color_rebalance_step_title': 'Rééquilibrage des couleurs',
+            'color_rebalance_step_desc': 'Matrice de transformation 3×3 avec garde-fous anti-magenta',
             'histogram_equalization_step_title': 'Égalisation d\'histogramme (CLAHE)',
             'histogram_equalization_step_desc': 'Amélioration du contraste local',
             
@@ -124,6 +126,8 @@ class LocalizationManager:
             'operation_udcp_desc': 'Supprime le voile et améliore la visibilité des images sous-marines en utilisant l\'hypothèse du canal sombre.',
             
             'operation_beer_lambert_desc': 'Corrige l\'atténuation dépendante de la profondeur en utilisant la loi de Beer-Lambert avec compensation par canal.',
+            
+            'operation_color_rebalance_desc': 'Applique une matrice de transformation 3×3 pour affiner l\'équilibre des couleurs avec limitation de saturation pour éviter les artefacts magenta.',
             
             'operation_he': 'Égalisation d\'histogramme adaptatif',
             'operation_he_desc': 'Améliore le contraste local en utilisant CLAHE (Contrast Limited Adaptive Histogram Equalization).',
@@ -266,6 +270,32 @@ class LocalizationManager:
             'param_beer_lambert_enhance_factor_label': 'Facteur d\'amélioration',
             'param_beer_lambert_enhance_factor_desc': 'Facteur d\'amélioration finale pour la correction Beer-Lambert',
             
+            # Color rebalancing parameters  
+            'param_color_rebalance_enabled_label': 'Rééquilibrage des couleurs',
+            'param_color_rebalance_enabled_desc': 'Active la matrice de transformation 3×3 pour l\'affinement des couleurs',
+            'param_color_rebalance_rr_label': 'Rouge→Rouge (RR)',
+            'param_color_rebalance_rr_desc': 'Coefficient de la matrice pour le canal rouge vers rouge',
+            'param_color_rebalance_rg_label': 'Rouge→Vert (RG)', 
+            'param_color_rebalance_rg_desc': 'Coefficient de mélange du canal rouge vers vert',
+            'param_color_rebalance_rb_label': 'Rouge→Bleu (RB)',
+            'param_color_rebalance_rb_desc': 'Coefficient de mélange du canal rouge vers bleu',
+            'param_color_rebalance_gr_label': 'Vert→Rouge (GR)',
+            'param_color_rebalance_gr_desc': 'Coefficient de mélange du canal vert vers rouge',
+            'param_color_rebalance_gg_label': 'Vert→Vert (GG)',
+            'param_color_rebalance_gg_desc': 'Coefficient de la matrice pour le canal vert vers vert',
+            'param_color_rebalance_gb_label': 'Vert→Bleu (GB)',
+            'param_color_rebalance_gb_desc': 'Coefficient de mélange du canal vert vers bleu',
+            'param_color_rebalance_br_label': 'Bleu→Rouge (BR)',
+            'param_color_rebalance_br_desc': 'Coefficient de mélange du canal bleu vers rouge',
+            'param_color_rebalance_bg_label': 'Bleu→Vert (BG)',
+            'param_color_rebalance_bg_desc': 'Coefficient de mélange du canal bleu vers vert',
+            'param_color_rebalance_bb_label': 'Bleu→Bleu (BB)',
+            'param_color_rebalance_bb_desc': 'Coefficient de la matrice pour le canal bleu vers bleu',
+            'param_color_rebalance_saturation_limit_label': 'Limite de saturation',
+            'param_color_rebalance_saturation_limit_desc': 'Plafond de saturation pour éviter les artefacts magenta (0.3-1.0)',
+            'param_color_rebalance_preserve_luminance_label': 'Préserver la luminance',
+            'param_color_rebalance_preserve_luminance_desc': 'Maintient la luminance originale lors du rééquilibrage',
+            
             # Histogram equalization parameters
             'param_hist_eq_enabled_label': 'Égalisation d\'histogramme',
             'param_hist_eq_enabled_desc': 'Applique l\'égalisation adaptative d\'histogramme pour améliorer le contraste',
@@ -386,6 +416,8 @@ class LocalizationManager:
             'udcp_step_desc': 'Specialized enhancement for underwater images',
             'beer_lambert_step_title': 'Beer-Lambert Correction',
             'beer_lambert_step_desc': 'Depth-dependent attenuation correction using Beer-Lambert law',
+            'color_rebalance_step_title': 'Color Rebalancing',
+            'color_rebalance_step_desc': '3×3 transformation matrix with anti-magenta safeguards',
             'histogram_equalization_step_title': 'Histogram Equalization (CLAHE)',
             'histogram_equalization_step_desc': 'Local contrast enhancement',
             
@@ -396,6 +428,8 @@ class LocalizationManager:
             'operation_udcp_desc': 'Removes haze and improves visibility in underwater images using dark channel hypothesis.',
             
             'operation_beer_lambert_desc': 'Corrects depth-dependent attenuation using Beer-Lambert law with per-channel compensation.',
+            
+            'operation_color_rebalance_desc': 'Applies a 3×3 transformation matrix to fine-tune color balance with saturation limiting to prevent magenta artifacts.',
             
             'operation_he': 'Adaptive Histogram Equalization',
             'operation_he_desc': 'Enhances local contrast using CLAHE (Contrast Limited Adaptive Histogram Equalization).',
@@ -537,6 +571,32 @@ class LocalizationManager:
             'param_beer_lambert_blue_coeff_desc': 'Attenuation coefficient for blue channel',
             'param_beer_lambert_enhance_factor_label': 'Enhancement factor',
             'param_beer_lambert_enhance_factor_desc': 'Final enhancement factor for Beer-Lambert correction',
+            
+            # Color rebalancing parameters
+            'param_color_rebalance_enabled_label': 'Color rebalancing',
+            'param_color_rebalance_enabled_desc': 'Enable 3×3 transformation matrix for color fine-tuning',
+            'param_color_rebalance_rr_label': 'Red→Red (RR)',
+            'param_color_rebalance_rr_desc': 'Matrix coefficient for red channel to red output',
+            'param_color_rebalance_rg_label': 'Red→Green (RG)',
+            'param_color_rebalance_rg_desc': 'Cross-channel mixing coefficient from red to green',
+            'param_color_rebalance_rb_label': 'Red→Blue (RB)',
+            'param_color_rebalance_rb_desc': 'Cross-channel mixing coefficient from red to blue',
+            'param_color_rebalance_gr_label': 'Green→Red (GR)',
+            'param_color_rebalance_gr_desc': 'Cross-channel mixing coefficient from green to red',
+            'param_color_rebalance_gg_label': 'Green→Green (GG)',
+            'param_color_rebalance_gg_desc': 'Matrix coefficient for green channel to green output',
+            'param_color_rebalance_gb_label': 'Green→Blue (GB)',
+            'param_color_rebalance_gb_desc': 'Cross-channel mixing coefficient from green to blue',
+            'param_color_rebalance_br_label': 'Blue→Red (BR)',
+            'param_color_rebalance_br_desc': 'Cross-channel mixing coefficient from blue to red',
+            'param_color_rebalance_bg_label': 'Blue→Green (BG)',
+            'param_color_rebalance_bg_desc': 'Cross-channel mixing coefficient from blue to green',
+            'param_color_rebalance_bb_label': 'Blue→Blue (BB)',
+            'param_color_rebalance_bb_desc': 'Matrix coefficient for blue channel to blue output',
+            'param_color_rebalance_saturation_limit_label': 'Saturation limit',
+            'param_color_rebalance_saturation_limit_desc': 'Saturation ceiling to prevent magenta artifacts (0.3-1.0)',
+            'param_color_rebalance_preserve_luminance_label': 'Preserve luminance',
+            'param_color_rebalance_preserve_luminance_desc': 'Maintain original luminance during rebalancing',
             
             # Histogram equalization parameters
             'param_hist_eq_enabled_label': 'Histogram equalization',

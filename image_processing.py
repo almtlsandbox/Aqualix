@@ -82,6 +82,20 @@ class ImageProcessor:
             'beer_lambert_blue_coeff': 0.1,        # Blue attenuation coefficient (0.05-1.0)
             'beer_lambert_enhance_factor': 1.5,    # Enhancement factor (1.0-3.0)
             
+            # Color Rebalancing (3x3 matrix) parameters
+            'color_rebalance_enabled': True,
+            'color_rebalance_rr': 1.0,              # Red to Red coefficient (0.5-2.0)
+            'color_rebalance_rg': 0.0,              # Red to Green coefficient (-0.5-0.5)
+            'color_rebalance_rb': 0.0,              # Red to Blue coefficient (-0.5-0.5)
+            'color_rebalance_gr': 0.0,              # Green to Red coefficient (-0.5-0.5)
+            'color_rebalance_gg': 1.0,              # Green to Green coefficient (0.5-2.0)
+            'color_rebalance_gb': 0.0,              # Green to Blue coefficient (-0.5-0.5)
+            'color_rebalance_br': 0.0,              # Blue to Red coefficient (-0.5-0.5)
+            'color_rebalance_bg': 0.0,              # Blue to Green coefficient (-0.5-0.5)
+            'color_rebalance_bb': 1.0,              # Blue to Blue coefficient (0.5-2.0)
+            'color_rebalance_saturation_limit': 0.8, # Saturation clamp to avoid magenta (0.3-1.0)
+            'color_rebalance_preserve_luminance': True, # Preserve luminance during rebalancing
+            
             # Histogram equalization parameters
             'hist_eq_enabled': True,
             'hist_eq_clip_limit': 2.0,
@@ -93,6 +107,7 @@ class ImageProcessor:
             'white_balance',
             'udcp',
             'beer_lambert',
+            'color_rebalance',
             'histogram_equalization'
         ]
         
@@ -120,6 +135,8 @@ class ImageProcessor:
                 result = self.underwater_dark_channel_prior(result)
             elif operation == 'beer_lambert' and self.parameters['beer_lambert_enabled']:
                 result = self.beer_lambert_correction(result)
+            elif operation == 'color_rebalance' and self.parameters['color_rebalance_enabled']:
+                result = self.color_rebalance(result)
             elif operation == 'histogram_equalization' and self.parameters['hist_eq_enabled']:
                 result = self.adaptive_histogram_equalization(result)
                 
@@ -673,6 +690,92 @@ class ImageProcessor:
         except Exception as e:
             print(f"Error in Beer-Lambert correction: {e}")
             return image
+    
+    def color_rebalance(self, image: np.ndarray) -> np.ndarray:
+        """
+        Apply color rebalancing using a 3x3 transformation matrix with saturation guards.
+        
+        This correction allows fine-tuning of color balance after other corrections,
+        with built-in protection against oversaturation (particularly magenta artifacts).
+        
+        Args:
+            image: Input image as numpy array (RGB)
+            
+        Returns:
+            np.ndarray: Color-rebalanced image with saturation protection
+        """
+        try:
+            # Get transformation matrix parameters
+            rr = self.parameters['color_rebalance_rr']
+            rg = self.parameters['color_rebalance_rg'] 
+            rb = self.parameters['color_rebalance_rb']
+            gr = self.parameters['color_rebalance_gr']
+            gg = self.parameters['color_rebalance_gg']
+            gb = self.parameters['color_rebalance_gb']
+            br = self.parameters['color_rebalance_br']
+            bg = self.parameters['color_rebalance_bg']
+            bb = self.parameters['color_rebalance_bb']
+            saturation_limit = self.parameters['color_rebalance_saturation_limit']
+            preserve_luminance = self.parameters['color_rebalance_preserve_luminance']
+            
+            # Convert to float [0, 1]
+            img_float = image.astype(np.float32) / 255.0
+            
+            # Store original luminance if preservation is enabled
+            original_luminance = None
+            if preserve_luminance:
+                # Calculate luminance using standard weights
+                original_luminance = 0.299 * img_float[:, :, 0] + 0.587 * img_float[:, :, 1] + 0.114 * img_float[:, :, 2]
+            
+            # Create 3x3 transformation matrix
+            transform_matrix = np.array([
+                [rr, rg, rb],  # Red output coefficients
+                [gr, gg, gb],  # Green output coefficients  
+                [br, bg, bb]   # Blue output coefficients
+            ], dtype=np.float32)
+            
+            # Reshape image for matrix multiplication
+            height, width, channels = img_float.shape
+            img_reshaped = img_float.reshape(-1, 3).T  # (3, H*W)
+            
+            # Apply transformation matrix
+            transformed = np.dot(transform_matrix, img_reshaped)
+            
+            # Reshape back to image format
+            result = transformed.T.reshape(height, width, 3)
+            
+            # Apply saturation limiting to prevent magenta artifacts
+            if saturation_limit < 1.0:
+                # Convert to HSV for saturation control
+                result_hsv = cv2.cvtColor(result, cv2.COLOR_RGB2HSV)
+                
+                # Limit saturation channel
+                result_hsv[:, :, 1] = np.clip(result_hsv[:, :, 1], 0, saturation_limit)
+                
+                # Convert back to RGB
+                result = cv2.cvtColor(result_hsv, cv2.COLOR_HSV2RGB)
+            
+            # Restore original luminance if requested
+            if preserve_luminance and original_luminance is not None:
+                # Calculate new luminance
+                new_luminance = 0.299 * result[:, :, 0] + 0.587 * result[:, :, 1] + 0.114 * result[:, :, 2]
+                
+                # Avoid division by zero
+                luminance_ratio = np.divide(original_luminance, new_luminance, 
+                                          out=np.ones_like(original_luminance), 
+                                          where=new_luminance != 0)
+                
+                # Apply luminance correction to each channel
+                for i in range(3):
+                    result[:, :, i] = result[:, :, i] * luminance_ratio
+            
+            # Final clipping and conversion
+            result = np.clip(result, 0, 1)
+            return (result * 255.0).astype(np.uint8)
+            
+        except Exception as e:
+            print(f"Error in color rebalancing: {e}")
+            return image
             
     def adaptive_histogram_equalization(self, image: np.ndarray) -> np.ndarray:
         """
@@ -750,6 +853,21 @@ class ImageProcessor:
                                 f'Coeff. vert: {self.parameters["beer_lambert_green_coeff"]:.2f}, '
                                 f'Coeff. bleu: {self.parameters["beer_lambert_blue_coeff"]:.2f}, '
                                 f'Enhancement: {self.parameters["beer_lambert_enhance_factor"]:.1f}'
+                })
+                
+            elif operation == 'color_rebalance' and self.parameters['color_rebalance_enabled']:
+                # Format matrix diagonal (main color channels)
+                matrix_diag = f'R:{self.parameters["color_rebalance_rr"]:.2f}, ' \
+                             f'G:{self.parameters["color_rebalance_gg"]:.2f}, ' \
+                             f'B:{self.parameters["color_rebalance_bb"]:.2f}'
+                
+                # Show saturation limit
+                sat_limit = f'Sat.Limite: {self.parameters["color_rebalance_saturation_limit"]:.2f}'
+                
+                pipeline_steps.append({
+                    'name': t('color_rebalance_step_title'),
+                    'description': t('operation_color_rebalance_desc'),
+                    'parameters': f'{matrix_diag}, {sat_limit}'
                 })
                 
             elif operation == 'histogram_equalization' and self.parameters['hist_eq_enabled']:
@@ -1035,6 +1153,98 @@ class ImageProcessor:
                 'min': 0.5,
                 'max': 3.0,
                 'step': 0.1
+            },
+            
+            # Color Rebalancing parameters
+            'color_rebalance_enabled': {
+                'type': 'boolean',
+                'label': t('param_color_rebalance_enabled_label'),
+                'description': t('param_color_rebalance_enabled_desc')
+            },
+            'color_rebalance_rr': {
+                'type': 'float',
+                'label': t('param_color_rebalance_rr_label'),
+                'description': t('param_color_rebalance_rr_desc'),
+                'min': 0.5,
+                'max': 2.0,
+                'step': 0.05
+            },
+            'color_rebalance_rg': {
+                'type': 'float',
+                'label': t('param_color_rebalance_rg_label'),
+                'description': t('param_color_rebalance_rg_desc'),
+                'min': -0.5,
+                'max': 0.5,
+                'step': 0.05
+            },
+            'color_rebalance_rb': {
+                'type': 'float',
+                'label': t('param_color_rebalance_rb_label'),
+                'description': t('param_color_rebalance_rb_desc'),
+                'min': -0.5,
+                'max': 0.5,
+                'step': 0.05
+            },
+            'color_rebalance_gr': {
+                'type': 'float',
+                'label': t('param_color_rebalance_gr_label'),
+                'description': t('param_color_rebalance_gr_desc'),
+                'min': -0.5,
+                'max': 0.5,
+                'step': 0.05
+            },
+            'color_rebalance_gg': {
+                'type': 'float',
+                'label': t('param_color_rebalance_gg_label'),
+                'description': t('param_color_rebalance_gg_desc'),
+                'min': 0.5,
+                'max': 2.0,
+                'step': 0.05
+            },
+            'color_rebalance_gb': {
+                'type': 'float',
+                'label': t('param_color_rebalance_gb_label'),
+                'description': t('param_color_rebalance_gb_desc'),
+                'min': -0.5,
+                'max': 0.5,
+                'step': 0.05
+            },
+            'color_rebalance_br': {
+                'type': 'float',
+                'label': t('param_color_rebalance_br_label'),
+                'description': t('param_color_rebalance_br_desc'),
+                'min': -0.5,
+                'max': 0.5,
+                'step': 0.05
+            },
+            'color_rebalance_bg': {
+                'type': 'float',
+                'label': t('param_color_rebalance_bg_label'),
+                'description': t('param_color_rebalance_bg_desc'),
+                'min': -0.5,
+                'max': 0.5,
+                'step': 0.05
+            },
+            'color_rebalance_bb': {
+                'type': 'float',
+                'label': t('param_color_rebalance_bb_label'),
+                'description': t('param_color_rebalance_bb_desc'),
+                'min': 0.5,
+                'max': 2.0,
+                'step': 0.05
+            },
+            'color_rebalance_saturation_limit': {
+                'type': 'float',
+                'label': t('param_color_rebalance_saturation_limit_label'),
+                'description': t('param_color_rebalance_saturation_limit_desc'),
+                'min': 0.3,
+                'max': 1.0,
+                'step': 0.05
+            },
+            'color_rebalance_preserve_luminance': {
+                'type': 'boolean',
+                'label': t('param_color_rebalance_preserve_luminance_label'),
+                'description': t('param_color_rebalance_preserve_luminance_desc')
             },
             
             # Histogram equalization parameters

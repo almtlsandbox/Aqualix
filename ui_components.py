@@ -132,6 +132,17 @@ class ParameterPanel(ttk.Frame):
                     'beer_lambert_enhance_factor'
                 ]
             },
+            'color_rebalance': {
+                'title': t('color_rebalance_step_title'),
+                'description': t('color_rebalance_step_desc'),
+                'enable_param': 'color_rebalance_enabled',
+                'parameters': [
+                    'color_rebalance_rr', 'color_rebalance_rg', 'color_rebalance_rb',
+                    'color_rebalance_gr', 'color_rebalance_gg', 'color_rebalance_gb',
+                    'color_rebalance_br', 'color_rebalance_bg', 'color_rebalance_bb',
+                    'color_rebalance_saturation_limit', 'color_rebalance_preserve_luminance'
+                ]
+            },
             'histogram_equalization': {
                 'title': t('histogram_equalization_step_title'),
                 'description': t('histogram_equalization_step_desc'),
