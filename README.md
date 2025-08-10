@@ -10,6 +10,33 @@ Une application Python Tkinter pour le traitement interactif d'images et de vid�
 
 ## Features
 
+### Nouvelles fonctionnalités (v1.1.0)
+
+#### Interface en ligne de commande (CLI)
+- **Traitement par lot sans interface graphique**
+- Support des images et vidéos individuelles ou par dossiers
+- Configuration flexible des paramètres de sortie
+- Rapports de progression détaillés
+
+#### Système de journalisation avancé
+- **Fichiers de log rotatifs** dans le dossier `logs/`
+- **Niveaux configurables** : DEBUG, INFO, WARNING, ERROR
+- **Suivi complet** des opérations et paramètres
+- **Horodatage précis** de toutes les activités
+
+#### Onglet Informations détaillées
+- **Métadonnées de fichier** : taille, dates, type MIME
+- **Propriétés d'image** : dimensions, profondeur de couleur, format
+- **Analyses avancées** : histogrammes de couleur, statistiques
+- **Données EXIF complètes** : appareil photo, paramètres, géolocalisation
+
+### Interface utilisateur
+
+- **Onglet Paramètres** : Ajustement des paramètres de traitement en temps réel
+- **Onglet Opérations** : Description du pipeline de traitement actuel
+- **Onglet Informations** : Métadonnées détaillées des fichiers chargés
+- **Vue divisée interactive** avec contrôles avancés
+
 ### File Management
 - **File Selection**: Choose individual image or video files
 - **Folder Selection**: Select folders containing multiple images/videos
@@ -73,6 +100,72 @@ Une application Python Tkinter pour le traitement interactif d'images et de vid�
 
 ## Usage
 
+### Interface graphique
+
+1. **Lancer l'application** :
+   ```bash
+   python main.py
+   ```
+
+2. **Charger des fichiers** :
+   - Clic sur "Sélectionner un fichier" pour une image/vidéo individuelle
+   - Clic sur "Sélectionner un dossier" pour traiter plusieurs fichiers
+
+3. **Ajuster les paramètres** :
+   - Utilisez l'onglet "Paramètres" pour configurer les réglages
+   - Les changements sont appliqués en temps réel
+
+4. **Naviguer** :
+   - Boutons Précédent/Suivant pour les collections de fichiers
+   - Slider de frames pour les vidéos
+
+5. **Vue interactive** :
+   - **Vue divisée** : Avant (gauche) et après (droite)
+   - **Ajuster la division** : Glisser la ligne blanche ou utiliser le slider
+   - **Zoom** : Molette de souris ou boutons +/-
+   - **Panoramique** : Clic gauche + glisser
+   - **Rotation** : Boutons ↺ ↻ (90°)
+   - **Réinitialiser** : Retour aux valeurs par défaut
+
+6. **Sauvegarder** :
+   - Clic sur "Sauvegarder le résultat" pour exporter
+   - Pour les vidéos, traitement appliqué à toutes les frames
+
+### Interface en ligne de commande (CLI)
+
+1. **Traitement d'une image** :
+   ```bash
+   python cli.py --input image.jpg --output processed_image.jpg
+   ```
+
+2. **Traitement d'un dossier** :
+   ```bash
+   python cli.py --input ./photos --output ./processed --recursive
+   ```
+
+3. **Traitement vidéo avec paramètres personnalisés** :
+   ```bash
+   python cli.py --input video.mp4 --output processed_video.mp4 --wb-percentile 15 --clahe-clip-limit 3.0
+   ```
+
+4. **Afficher toutes les options** :
+   ```bash
+   python cli.py --help
+   ```
+
+#### Options CLI disponibles :
+- `--input, -i` : Fichier ou dossier d'entrée
+- `--output, -o` : Fichier ou dossier de sortie
+- `--recursive, -r` : Traitement récursif des sous-dossiers
+- `--wb-enable` : Activer la balance des blancs (défaut: activé)
+- `--wb-percentile` : Percentile pour la balance des blancs (défaut: 10.0)
+- `--wb-max-adj` : Ajustement maximum de la balance (défaut: 2.0)
+- `--clahe-enable` : Activer l'égalisation d'histogramme (défaut: activé)
+- `--clahe-clip-limit` : Limite de contraste CLAHE (défaut: 2.0)
+- `--clahe-tile-size` : Taille des tuiles CLAHE (défaut: 8)
+- `--verbose, -v` : Mode verbeux
+- `--log-level` : Niveau de log (DEBUG, INFO, WARNING, ERROR)
+
 1. **Run the application**:
    ```bash
    python main.py
@@ -120,6 +213,15 @@ Une application Python Tkinter pour le traitement interactif d'images et de vid�
 - **main.py**: Main application class and UI coordination
 - **image_processing.py**: Image processing algorithms and pipeline management
 - **ui_components.py**: Reusable UI components (parameter panel, interactive split view, etc.)
+- **cli.py**: Command-line interface for batch processing
+- **logger.py**: Comprehensive logging system with file rotation
+- **image_info.py**: Image metadata extraction and analysis
+
+### Système de fichiers
+- **logs/**: Dossier contenant les fichiers de log rotatifs
+  - `aqualix.log`: Log principal de l'application
+  - `aqualix.log.1`, `aqualix.log.2`: Archives automatiques (10MB max par fichier)
+- **Fichiers de configuration** : Sauvegarde automatique des paramètres utilisateur
 
 ### Dependencies
 - **OpenCV**: Image and video processing

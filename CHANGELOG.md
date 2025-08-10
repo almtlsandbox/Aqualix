@@ -5,6 +5,34 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [1.1.0] - 2024-01-15
+
+### Ajouté
+- **Interface en ligne de commande (CLI)** : Traitement par lot via `python cli.py`
+  - Support des images et vidéos
+  - Traitement de dossiers entiers
+  - Options configurables de sortie
+  - Rapports de progression détaillés
+  
+- **Système de journalisation** : Logging complet des opérations
+  - Fichiers de log rotatifs dans le dossier `logs/`
+  - Niveaux de log configurables (DEBUG, INFO, WARNING, ERROR)
+  - Suivi des paramètres et opérations de traitement
+  
+- **Onglet Informations** : Affichage détaillé des métadonnées d'images
+  - Informations de fichier (taille, date de modification, type)
+  - Propriétés d'image (dimensions, profondeur de couleur, format)
+  - Analyses avancées (histogramme de couleurs, statistiques)
+  - Données EXIF complètes (caméra, paramètres, géolocalisation si disponible)
+
+### Modifié
+- Interface utilisateur reorganisée en trois onglets : Paramètres, Opérations, Informations
+- Amélioration de la gestion des erreurs et de la stabilité
+
+### Corrigé
+- Fix des références à la progress bar lors de la fermeture de fenêtre
+- Amélioration de la gestion mémoire lors du traitement vidéo
+
 ## [1.0.0] - 2025-08-10
 
 ### Ajouté

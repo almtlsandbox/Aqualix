@@ -8,12 +8,14 @@ from tkinter import ttk, filedialog, messagebox
 import cv2
 import numpy as np
 import os
+import time
 from PIL import Image, ImageTk
 import threading
 from pathlib import Path
 
 from image_processing import ImageProcessor
-from ui_components import ParameterPanel, PipelinePanel, InteractivePreviewPanel
+from ui_components import ParameterPanel, PipelinePanel, InteractivePreviewPanel, ImageInfoPanel
+from logger import AqualixLogger
 
 class ImageVideoProcessorApp:
     def __init__(self, root):
@@ -31,8 +33,13 @@ class ImageVideoProcessorApp:
         self.current_frame = 0
         self.total_frames = 0
         
-        # Initialize image processor
+        # Initialize image processor and logger
         self.processor = ImageProcessor()
+        self.logger = AqualixLogger()
+        
+        # Log application startup
+        self.logger.info("=== Aqualix Application Started ===")
+        self.logger.info(f"Log file: {self.logger.get_log_file_path()}")
         
         # Setup UI
         self.setup_ui()
@@ -73,6 +80,14 @@ class ImageVideoProcessorApp:
         # Pipeline panel
         self.pipeline_panel = PipelinePanel(pipeline_frame)
         self.pipeline_panel.pack(fill=tk.BOTH, expand=True)
+        
+        # Image info tab
+        info_frame = ttk.Frame(self.notebook)
+        self.notebook.add(info_frame, text="Informations")
+        
+        # Image info panel
+        self.info_panel = ImageInfoPanel(info_frame)
+        self.info_panel.pack(fill=tk.BOTH, expand=True)
         
         # Right panel - Preview
         right_panel = ttk.Frame(content_frame)
@@ -189,6 +204,10 @@ class ImageVideoProcessorApp:
         
         # Update file info
         self.file_info_label.config(text=f"{file_name} ({self.current_index + 1}/{len(self.files_list)})")
+        
+        # Update image info panel
+        if hasattr(self, 'info_panel'):
+            self.info_panel.update_info(self.current_file)
         
         # Check if it's a video file
         video_extensions = {'.mp4', '.avi', '.mov', '.mkv'}
@@ -385,7 +404,8 @@ class ImageVideoProcessorApp:
                         out.write(processed_bgr)
                         
                         # Update progress
-                        self.root.after(0, lambda: progress_bar.configure(value=frame_num + 1))
+                        if progress_window.winfo_exists():
+                            self.root.after(0, lambda f=frame_num: progress_bar.configure(value=f + 1))
                         
                     out.release()
                     

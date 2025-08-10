@@ -8,6 +8,7 @@ from tkinter import ttk
 import numpy as np
 from PIL import Image, ImageTk
 from typing import Dict, Any, List, Callable, Union, Optional
+from image_info import ImageInfoExtractor
 
 class ParameterPanel(ttk.Frame):
     """Panel for adjusting processing parameters"""
@@ -536,3 +537,282 @@ class InteractivePreviewPanel(ttk.Frame):
                 fill="red",
                 font=('Arial', 10)
             )
+
+class ImageInfoPanel(ttk.Frame):
+    """Panel showing detailed image information"""
+    
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.info_extractor = ImageInfoExtractor()
+        self.current_info = {}
+        self.setup_ui()
+        
+    def setup_ui(self):
+        """Setup the image info panel UI"""
+        # Title
+        title_label = ttk.Label(self, text="Informations de l'image", font=('Arial', 12, 'bold'))
+        title_label.pack(pady=(0, 5))
+        
+        # Notebook for different info categories
+        self.info_notebook = ttk.Notebook(self)
+        self.info_notebook.pack(fill=tk.BOTH, expand=True)
+        
+        # File info tab
+        self.file_frame = ttk.Frame(self.info_notebook)
+        self.info_notebook.add(self.file_frame, text="Fichier")
+        self.setup_file_info_tab()
+        
+        # Properties tab
+        self.props_frame = ttk.Frame(self.info_notebook)
+        self.info_notebook.add(self.props_frame, text="Propriétés")
+        self.setup_properties_tab()
+        
+        # Analysis tab
+        self.analysis_frame = ttk.Frame(self.info_notebook)
+        self.info_notebook.add(self.analysis_frame, text="Analyse")
+        self.setup_analysis_tab()
+        
+        # EXIF tab (for images)
+        self.exif_frame = ttk.Frame(self.info_notebook)
+        self.info_notebook.add(self.exif_frame, text="EXIF")
+        self.setup_exif_tab()
+        
+    def setup_file_info_tab(self):
+        """Setup file information display"""
+        # Scrollable frame
+        canvas = tk.Canvas(self.file_frame)
+        scrollbar = ttk.Scrollbar(self.file_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        self.file_info_frame = scrollable_frame
+        
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+    def setup_properties_tab(self):
+        """Setup properties display"""
+        # Scrollable frame
+        canvas = tk.Canvas(self.props_frame)
+        scrollbar = ttk.Scrollbar(self.props_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        self.properties_info_frame = scrollable_frame
+        
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+    def setup_analysis_tab(self):
+        """Setup color analysis display"""
+        # Scrollable frame
+        canvas = tk.Canvas(self.analysis_frame)
+        scrollbar = ttk.Scrollbar(self.analysis_frame, orient="vertical", command=canvas.yview)
+        scrollable_frame = ttk.Frame(canvas)
+        
+        scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        self.analysis_info_frame = scrollable_frame
+        
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+    def setup_exif_tab(self):
+        """Setup EXIF data display"""
+        # Scrollable text widget
+        frame = ttk.Frame(self.exif_frame)
+        frame.pack(fill=tk.BOTH, expand=True)
+        
+        self.exif_text = tk.Text(
+            frame,
+            wrap=tk.WORD,
+            font=('Consolas', 9),
+            state=tk.DISABLED
+        )
+        
+        scrollbar = ttk.Scrollbar(frame, orient="vertical", command=self.exif_text.yview)
+        self.exif_text.configure(yscrollcommand=scrollbar.set)
+        
+        self.exif_text.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+    def update_info(self, file_path, image_array=None, is_video=False):
+        """Update the information display"""
+        try:
+            if is_video:
+                self.current_info = self.info_extractor.get_video_info(file_path)
+                # Hide EXIF tab for videos
+                self.info_notebook.tab(3, state='hidden')
+            else:
+                self.current_info = self.info_extractor.get_image_info(file_path, image_array)
+                # Show EXIF tab for images
+                self.info_notebook.tab(3, state='normal')
+                
+            self.display_file_info()
+            self.display_properties_info()
+            self.display_analysis_info()
+            if not is_video:
+                self.display_exif_info()
+                
+        except Exception as e:
+            self.display_error(str(e))
+            
+    def display_file_info(self):
+        """Display file information"""
+        # Clear previous content
+        for widget in self.file_info_frame.winfo_children():
+            widget.destroy()
+            
+        if 'file' not in self.current_info:
+            return
+            
+        file_info = self.current_info['file']
+        
+        info_items = [
+            ("Nom", file_info.get('name', 'N/A')),
+            ("Chemin", file_info.get('path', 'N/A')),
+            ("Taille", file_info.get('size', 'N/A')),
+            ("Modifié", file_info.get('modified', 'N/A')),
+            ("Créé", file_info.get('created', 'N/A')),
+            ("Extension", file_info.get('extension', 'N/A')),
+            ("Hash MD5", file_info.get('hash_md5', 'N/A'))
+        ]
+        
+        for i, (label, value) in enumerate(info_items):
+            frame = ttk.Frame(self.file_info_frame)
+            frame.pack(fill=tk.X, padx=5, pady=2)
+            
+            ttk.Label(frame, text=f"{label}:", font=('Arial', 9, 'bold')).pack(side=tk.LEFT)
+            ttk.Label(frame, text=str(value), font=('Arial', 9)).pack(side=tk.LEFT, padx=(10, 0))
+            
+    def display_properties_info(self):
+        """Display properties information"""
+        # Clear previous content
+        for widget in self.properties_info_frame.winfo_children():
+            widget.destroy()
+            
+        if 'properties' not in self.current_info:
+            return
+            
+        props = self.current_info['properties']
+        
+        # Different properties for images vs videos
+        if 'fps' in props:  # Video properties
+            info_items = [
+                ("Largeur", f"{props.get('width', 'N/A')} px"),
+                ("Hauteur", f"{props.get('height', 'N/A')} px"),
+                ("Ratio d'aspect", str(props.get('aspect_ratio', 'N/A'))),
+                ("FPS", str(props.get('fps', 'N/A'))),
+                ("Frames totales", str(props.get('total_frames', 'N/A'))),
+                ("Durée", str(props.get('duration', 'N/A'))),
+                ("Codec", str(props.get('fourcc', 'N/A')))
+            ]
+        else:  # Image properties
+            info_items = [
+                ("Largeur", f"{props.get('width', 'N/A')} px"),
+                ("Hauteur", f"{props.get('height', 'N/A')} px"),
+                ("Canaux", str(props.get('channels', 'N/A'))),
+                ("Pixels totaux", f"{props.get('total_pixels', 'N/A'):,}" if props.get('total_pixels') else 'N/A'),
+                ("Ratio d'aspect", str(props.get('aspect_ratio', 'N/A'))),
+                ("Format", str(props.get('format', 'N/A'))),
+                ("Mode", str(props.get('mode', 'N/A'))),
+                ("Transparence", "Oui" if props.get('has_transparency') else "Non"),
+                ("Type de données", str(props.get('dtype', 'N/A'))),
+                ("Valeur min", str(props.get('min_value', 'N/A'))),
+                ("Valeur max", str(props.get('max_value', 'N/A'))),
+                ("Valeur moyenne", str(props.get('mean_value', 'N/A')))
+            ]
+            
+        for i, (label, value) in enumerate(info_items):
+            frame = ttk.Frame(self.properties_info_frame)
+            frame.pack(fill=tk.X, padx=5, pady=2)
+            
+            ttk.Label(frame, text=f"{label}:", font=('Arial', 9, 'bold')).pack(side=tk.LEFT)
+            ttk.Label(frame, text=str(value), font=('Arial', 9)).pack(side=tk.LEFT, padx=(10, 0))
+            
+    def display_analysis_info(self):
+        """Display color analysis information"""
+        # Clear previous content
+        for widget in self.analysis_info_frame.winfo_children():
+            widget.destroy()
+            
+        if 'color_analysis' not in self.current_info:
+            ttk.Label(self.analysis_info_frame, text="Aucune analyse de couleur disponible").pack(pady=20)
+            return
+            
+        analysis = self.current_info['color_analysis']
+        
+        info_items = []
+        if 'red_mean' in analysis:  # RGB analysis
+            info_items = [
+                ("Moyenne Rouge", str(analysis.get('red_mean', 'N/A'))),
+                ("Moyenne Vert", str(analysis.get('green_mean', 'N/A'))),
+                ("Moyenne Bleu", str(analysis.get('blue_mean', 'N/A'))),
+                ("Écart-type Rouge", str(analysis.get('red_std', 'N/A'))),
+                ("Écart-type Vert", str(analysis.get('green_std', 'N/A'))),
+                ("Écart-type Bleu", str(analysis.get('blue_std', 'N/A'))),
+                ("Luminosité", str(analysis.get('brightness', 'N/A'))),
+                ("Contraste", str(analysis.get('contrast', 'N/A'))),
+                ("Temp. couleur estimée", f"{analysis.get('estimated_color_temp', 'N/A')} K"),
+                ("Couleurs uniques", f"{analysis.get('unique_colors', 'N/A'):,}" if analysis.get('unique_colors') else 'N/A')
+            ]
+        else:  # Grayscale analysis
+            info_items = [
+                ("Luminosité", str(analysis.get('brightness', 'N/A'))),
+                ("Contraste", str(analysis.get('contrast', 'N/A'))),
+                ("Intensité min", str(analysis.get('min_intensity', 'N/A'))),
+                ("Intensité max", str(analysis.get('max_intensity', 'N/A')))
+            ]
+            
+        for i, (label, value) in enumerate(info_items):
+            frame = ttk.Frame(self.analysis_info_frame)
+            frame.pack(fill=tk.X, padx=5, pady=2)
+            
+            ttk.Label(frame, text=f"{label}:", font=('Arial', 9, 'bold')).pack(side=tk.LEFT)
+            ttk.Label(frame, text=str(value), font=('Arial', 9)).pack(side=tk.LEFT, padx=(10, 0))
+            
+    def display_exif_info(self):
+        """Display EXIF information"""
+        self.exif_text.config(state=tk.NORMAL)
+        self.exif_text.delete(1.0, tk.END)
+        
+        if 'exif' not in self.current_info or not self.current_info['exif']:
+            self.exif_text.insert(tk.END, "Aucune donnée EXIF trouvée")
+        else:
+            exif_data = self.current_info['exif']
+            for key, value in sorted(exif_data.items()):
+                self.exif_text.insert(tk.END, f"{key}: {value}\n")
+                
+        self.exif_text.config(state=tk.DISABLED)
+        
+    def display_error(self, error_message):
+        """Display error message"""
+        for frame in [self.file_info_frame, self.properties_info_frame, self.analysis_info_frame]:
+            for widget in frame.winfo_children():
+                widget.destroy()
+            ttk.Label(frame, text=f"Erreur: {error_message}", foreground='red').pack(pady=20)
+            
+        self.exif_text.config(state=tk.NORMAL)
+        self.exif_text.delete(1.0, tk.END)
+        self.exif_text.insert(tk.END, f"Erreur: {error_message}")
+        self.exif_text.config(state=tk.DISABLED)
