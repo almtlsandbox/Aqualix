@@ -30,10 +30,11 @@ except ImportError:
 class ParameterPanel(ttk.Frame):
     """Panel for adjusting processing parameters"""
     
-    def __init__(self, parent, processor, update_callback: Callable):
+    def __init__(self, parent, processor, update_callback: Callable, get_image_callback: Optional[Callable] = None):
         super().__init__(parent)
         self.processor = processor
         self.update_callback = update_callback
+        self.get_image_callback = get_image_callback
         self.param_widgets = {}
         self.frame_order = []  # Keep track of frame order for proper re-packing
         self.step_frames = {}  # Store collapsible step frames
@@ -233,6 +234,16 @@ class ParameterPanel(ttk.Frame):
         buttons_frame = ttk.Frame(header_frame)
         buttons_frame.pack(side=tk.RIGHT)
         
+        # Auto-Tune checkbox
+        auto_tune_var = tk.BooleanVar(value=False)
+        auto_tune_checkbox = ttk.Checkbutton(
+            buttons_frame,
+            text=t('auto_tune'),
+            variable=auto_tune_var,
+            command=lambda: self.on_auto_tune_change(step_key, auto_tune_var.get())
+        )
+        auto_tune_checkbox.pack(side=tk.LEFT, padx=(0, 5))
+        
         # Reset to defaults button
         reset_button = ttk.Button(
             buttons_frame,
@@ -270,7 +281,9 @@ class ParameterPanel(ttk.Frame):
             'main_frame': step_frame,
             'params_frame': params_frame,
             'expand_button': expand_button,
-            'enable_checkbox': enable_checkbox
+            'enable_checkbox': enable_checkbox,
+            'auto_tune_checkbox': auto_tune_checkbox,
+            'auto_tune_var': auto_tune_var
         }
         
     def create_single_parameter_widget(self, parent, param_name, info):
@@ -532,6 +545,49 @@ class ParameterPanel(ttk.Frame):
             
         except Exception as e:
             print(f"Error resetting step {step_key}: {e}")
+    
+    def on_auto_tune_change(self, step_key: str, enabled: bool):
+        """Handle auto-tune checkbox state change"""
+        # Store the auto-tune state for this step
+        # The actual auto-tuning will happen during processing
+        print(f"Auto-tune for {step_key}: {'enabled' if enabled else 'disabled'}")
+    
+    def is_auto_tune_enabled(self, step_key: str) -> bool:
+        """Check if auto-tune is enabled for a specific step"""
+        if step_key in self.step_frames:
+            auto_tune_var = self.step_frames[step_key].get('auto_tune_var')
+            return auto_tune_var.get() if auto_tune_var else False
+        return False
+    def _perform_auto_tune_step(self, step_key: str):
+        """Auto-tune parameters for a specific step using image analysis"""
+        try:
+            # Check if we have a get_image_callback and a loaded image
+            if not self.get_image_callback:
+                print("No image callback available for auto-tuning")
+                return False
+                
+            original_image = self.get_image_callback()
+            if original_image is None:
+                print("No image loaded for auto-tuning")
+                return False
+            
+            # Perform auto-tuning for the specific step
+            optimized_params = self.processor.auto_tune_step(step_key, original_image)
+            
+            if optimized_params:
+                # Apply optimized parameters
+                for param_name, value in optimized_params.items():
+                    self.processor.set_parameter(param_name, value)
+                
+                # Update UI widgets to reflect the new values
+                self.update_ui_from_parameters()
+                
+                print(f"Auto-tuned {step_key} with {len(optimized_params)} parameters")
+                return True
+                
+        except Exception as e:
+            print(f"Error auto-tuning step {step_key}: {e}")
+            return False
     
     def reset_all_parameters(self):
         """Reset ALL parameters to their default values"""

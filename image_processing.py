@@ -122,10 +122,17 @@ class ImageProcessor:
             'multiscale_fusion'
         ]
         
+        # Auto-tune callback function
+        self.auto_tune_callback = None
+        
     def set_parameter(self, name: str, value: Any):
         """Set a processing parameter"""
         if name in self.parameters:
             self.parameters[name] = value
+    
+    def set_auto_tune_callback(self, callback):
+        """Set the auto-tune callback function"""
+        self.auto_tune_callback = callback
             
     def get_parameter(self, name: str) -> Any:
         """Get a processing parameter"""
@@ -236,12 +243,41 @@ class ImageProcessor:
             for param_name, default_value in defaults.items():
                 if param_name.startswith(prefix):
                     self.set_parameter(param_name, default_value)
+    
+    def auto_tune_step(self, step_key: str, reference_image: np.ndarray) -> dict:
+        """Auto-tune parameters for a specific processing step based on image analysis"""
+        if reference_image is None:
+            return {}
+        
+        # Route to specific auto-tune method based on step
+        auto_tune_methods = {
+            'white_balance': self._auto_tune_white_balance,
+            'udcp': self._auto_tune_udcp,
+            'beer_lambert': self._auto_tune_beer_lambert,
+            'color_rebalance': self._auto_tune_color_rebalance,
+            'histogram_equalization': self._auto_tune_histogram_equalization,
+            'multiscale_fusion': self._auto_tune_multiscale_fusion
+        }
+        
+        if step_key in auto_tune_methods:
+            return auto_tune_methods[step_key](reference_image)
+        
+        return {}
         
     def process_image(self, image: np.ndarray) -> np.ndarray:
         """Process an image through the complete pipeline"""
         result = image.copy()
         
         for operation in self.pipeline_order:
+            # Check if auto-tune is enabled for this step and perform it
+            if self.auto_tune_callback and self.auto_tune_callback(operation):
+                optimized_params = self.auto_tune_step(operation, image)
+                # Apply optimized parameters directly to the processor
+                if optimized_params:
+                    for param_name, value in optimized_params.items():
+                        self.set_parameter(param_name, value)
+            
+            # Execute the processing step
             if operation == 'white_balance' and self.parameters['white_balance_enabled']:
                 result = self.apply_white_balance(result)
             elif operation == 'udcp' and self.parameters['udcp_enabled']:
@@ -1630,3 +1666,362 @@ class ImageProcessor:
                 'step': 0.05
             }
         }
+    
+    # ===============================
+    # AUTO-TUNE METHODS
+    # ===============================
+    
+    def _auto_tune_white_balance(self, img: np.ndarray) -> dict:
+        """Auto-tune white balance parameters based on image characteristics"""
+        try:
+            if img is None:
+                return {}
+            
+            # Analyze image color characteristics
+            img_float = img.astype(np.float32) / 255.0
+            h, s, v = cv2.split(cv2.cvtColor(img_float, cv2.COLOR_BGR2HSV))
+            
+            # Calculate color statistics
+            r_mean = np.mean(img_float[:,:,2])  # Red channel (BGR)
+            g_mean = np.mean(img_float[:,:,1])  # Green channel
+            b_mean = np.mean(img_float[:,:,0])  # Blue channel
+            
+            # Detect dominant color cast
+            r_ratio = r_mean / (r_mean + g_mean + b_mean + 1e-6)
+            g_ratio = g_mean / (r_mean + g_mean + b_mean + 1e-6)
+            b_ratio = b_mean / (r_mean + g_mean + b_mean + 1e-6)
+            
+            optimized_params = {}
+            
+            # Choose optimal white balance method based on color characteristics
+            if g_ratio > 0.4:  # Strong green cast (lake/freshwater)
+                optimized_params['white_balance_method'] = 'lake_green_water'
+                optimized_params['lake_green_reduction'] = min(0.8, (g_ratio - 0.33) * 2.0)
+                optimized_params['lake_magenta_strength'] = min(0.3, (g_ratio - 0.35) * 1.5)
+                optimized_params['lake_gray_world_influence'] = 0.6
+            elif b_ratio < 0.25:  # Blue loss (deep water)
+                optimized_params['white_balance_method'] = 'gray_world'
+                optimized_params['gray_world_percentile'] = 50
+                optimized_params['gray_world_max_adjustment'] = min(2.0, 1.5 + (0.33 - b_ratio) * 2.0)
+            elif r_ratio < 0.2:  # Red loss (typical underwater)
+                optimized_params['white_balance_method'] = 'shades_of_gray'
+                optimized_params['shades_of_gray_norm'] = 6
+                optimized_params['shades_of_gray_percentile'] = 95
+                optimized_params['shades_of_gray_max_adjustment'] = min(3.0, 2.0 + (0.33 - r_ratio) * 3.0)
+            else:  # Balanced colors
+                optimized_params['white_balance_method'] = 'white_patch'
+                optimized_params['white_patch_percentile'] = 99
+                optimized_params['white_patch_max_adjustment'] = 1.5
+            
+            return optimized_params
+            
+        except Exception as e:
+            print(f"Auto-tune white balance error: {e}")
+            return {}
+    
+    def _auto_tune_udcp(self, img: np.ndarray) -> dict:
+        """Auto-tune UDCP parameters based on image turbidity and contrast"""
+        try:
+            if img is None:
+                return {}
+            
+            # Analyze image characteristics
+            img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            
+            # Calculate contrast using standard deviation
+            contrast = np.std(img_gray) / 255.0
+            
+            # Calculate darkness (dark channel prior approximation)
+            dark_channel = np.min(img, axis=2)
+            darkness_level = np.mean(dark_channel) / 255.0
+            
+            # Calculate turbidity estimation (variance in local patches)
+            kernel = np.ones((15,15), np.float32) / 225
+            mean_filtered = cv2.filter2D(img_gray.astype(np.float32), -1, kernel)
+            turbidity = np.mean(np.abs(img_gray.astype(np.float32) - mean_filtered)) / 255.0
+            
+            optimized_params = {}
+            
+            # Adjust omega based on water clarity
+            if turbidity > 0.15:  # Murky water
+                optimized_params['udcp_omega'] = 0.7  # Less haze removal
+            elif turbidity > 0.08:  # Medium clarity
+                optimized_params['udcp_omega'] = 0.85
+            else:  # Clear water
+                optimized_params['udcp_omega'] = 0.95
+            
+            # Adjust t0 based on darkness level
+            optimized_params['udcp_t0'] = max(0.05, min(0.2, 0.1 + darkness_level * 0.5))
+            
+            # Adjust window size based on image resolution and turbidity
+            height, width = img_gray.shape
+            base_window = 7 if width < 800 else 15
+            if turbidity > 0.1:
+                optimized_params['udcp_window_size'] = max(7, base_window - 4)
+            else:
+                optimized_params['udcp_window_size'] = base_window
+            
+            # Adjust guided filter parameters
+            optimized_params['udcp_guided_radius'] = 30 if turbidity > 0.1 else 60
+            optimized_params['udcp_guided_eps'] = 0.01 if contrast > 0.3 else 0.001
+            
+            # Enhance contrast for low-contrast images
+            if contrast < 0.15:
+                optimized_params['udcp_enhance_contrast'] = min(1.5, 1.0 + (0.2 - contrast) * 2.0)
+            else:
+                optimized_params['udcp_enhance_contrast'] = 1.0
+                
+            return optimized_params
+            
+        except Exception as e:
+            print(f"Auto-tune UDCP error: {e}")
+            return {}
+    
+    def _auto_tune_beer_lambert(self, img: np.ndarray) -> dict:
+        """Auto-tune Beer-Lambert parameters based on color loss analysis"""
+        try:
+            if img is None:
+                return {}
+            
+            # Analyze color channel distributions
+            img_float = img.astype(np.float32) / 255.0
+            r_channel = img_float[:,:,2]  # Red (BGR)
+            g_channel = img_float[:,:,1]  # Green
+            b_channel = img_float[:,:,0]  # Blue
+            
+            # Calculate average intensities
+            r_mean = np.mean(r_channel)
+            g_mean = np.mean(g_channel)
+            b_mean = np.mean(b_channel)
+            
+            # Calculate color loss ratios (compared to expected balanced image)
+            expected_mean = 0.4  # Expected mean for balanced underwater image
+            r_loss = max(0, expected_mean - r_mean)
+            g_loss = max(0, expected_mean - g_mean)
+            b_loss = max(0, expected_mean - b_mean)
+            
+            # Estimate depth factor from overall darkness
+            overall_darkness = 1.0 - np.mean([r_mean, g_mean, b_mean])
+            
+            optimized_params = {}
+            
+            # Depth factor based on overall image darkness
+            optimized_params['beer_lambert_depth_factor'] = min(2.0, 0.5 + overall_darkness * 2.0)
+            
+            # Red coefficient (high for typical underwater red loss)
+            optimized_params['beer_lambert_red_coeff'] = min(0.8, 0.4 + r_loss * 1.5)
+            
+            # Green coefficient (moderate, varies with water type)
+            optimized_params['beer_lambert_green_coeff'] = min(0.6, 0.2 + g_loss * 1.2)
+            
+            # Blue coefficient (usually low, blue travels furthest)
+            optimized_params['beer_lambert_blue_coeff'] = min(0.4, 0.1 + b_loss * 1.0)
+            
+            # Enhancement factor based on overall color loss
+            total_loss = r_loss + g_loss + b_loss
+            optimized_params['beer_lambert_enhance_factor'] = min(2.5, 1.0 + total_loss * 2.0)
+            
+            return optimized_params
+            
+        except Exception as e:
+            print(f"Auto-tune Beer-Lambert error: {e}")
+            return {}
+    
+    def _auto_tune_color_rebalance(self, img: np.ndarray) -> dict:
+        """Auto-tune color rebalancing matrix based on color distribution analysis"""
+        try:
+            if img is None:
+                return {}
+            
+            # Analyze color relationships in HSV space
+            img_float = img.astype(np.float32) / 255.0
+            hsv = cv2.cvtColor(img_float, cv2.COLOR_BGR2HSV)
+            h, s, v = cv2.split(hsv)
+            
+            # Calculate color channel correlations
+            r_channel = img_float[:,:,2]
+            g_channel = img_float[:,:,1]
+            b_channel = img_float[:,:,0]
+            
+            # Calculate cross-channel correlations
+            rg_corr = np.corrcoef(r_channel.flat, g_channel.flat)[0,1]
+            rb_corr = np.corrcoef(r_channel.flat, b_channel.flat)[0,1]
+            gb_corr = np.corrcoef(g_channel.flat, b_channel.flat)[0,1]
+            
+            # Calculate saturation statistics
+            sat_mean = np.mean(s)
+            sat_std = np.std(s)
+            
+            optimized_params = {}
+            
+            # Adjust diagonal elements (main channel gains)
+            optimized_params['color_rebalance_rr'] = min(2.0, 1.0 + (1.0 - sat_mean) * 0.5)
+            optimized_params['color_rebalance_gg'] = 1.0
+            optimized_params['color_rebalance_bb'] = min(2.0, 1.0 + (1.0 - sat_mean) * 0.3)
+            
+            # Adjust cross-channel mixing based on correlations
+            # Reduce green influence on red if highly correlated (reduce green cast)
+            if rg_corr > 0.8:
+                optimized_params['color_rebalance_rg'] = max(-0.3, -0.1 * (rg_corr - 0.7))
+            else:
+                optimized_params['color_rebalance_rg'] = 0.0
+                
+            # Blue-red mixing for warm/cool balance
+            if rb_corr < 0.5:
+                optimized_params['color_rebalance_rb'] = min(0.2, 0.1 * (0.6 - rb_corr))
+            else:
+                optimized_params['color_rebalance_rb'] = 0.0
+            
+            # Green adjustments
+            optimized_params['color_rebalance_gr'] = 0.0
+            optimized_params['color_rebalance_gb'] = 0.0
+            
+            # Blue adjustments
+            optimized_params['color_rebalance_br'] = 0.0
+            optimized_params['color_rebalance_bg'] = 0.0
+            
+            # Saturation limiting based on current saturation distribution
+            if sat_std > 0.2:  # High saturation variance
+                optimized_params['color_rebalance_saturation_limit'] = min(0.8, 0.5 + sat_mean * 0.5)
+            else:  # Low saturation variance
+                optimized_params['color_rebalance_saturation_limit'] = min(1.0, 0.7 + sat_mean * 0.3)
+            
+            # Preserve luminance for natural look
+            optimized_params['color_rebalance_preserve_luminance'] = True
+            
+            return optimized_params
+            
+        except Exception as e:
+            print(f"Auto-tune color rebalance error: {e}")
+            return {}
+    
+    def _auto_tune_histogram_equalization(self, img: np.ndarray) -> dict:
+        """Auto-tune histogram equalization based on contrast analysis"""
+        try:
+            if img is None:
+                return {}
+            
+            # Analyze image contrast and histogram distribution
+            img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            
+            # Calculate histogram
+            hist = cv2.calcHist([img_gray], [0], None, [256], [0, 256])
+            hist_norm = hist / (img_gray.shape[0] * img_gray.shape[1])
+            
+            # Calculate contrast metrics
+            contrast_std = np.std(img_gray) / 255.0
+            
+            # Find histogram concentration (how much is in middle values)
+            middle_range = np.sum(hist_norm[64:192])  # Middle 50% of intensity range
+            
+            # Calculate local contrast variation
+            kernel = np.ones((9,9), np.float32) / 81
+            mean_filtered = cv2.filter2D(img_gray.astype(np.float32), -1, kernel)
+            local_contrast = np.mean(np.abs(img_gray.astype(np.float32) - mean_filtered)) / 255.0
+            
+            optimized_params = {}
+            
+            # Adjust clip limit based on contrast characteristics
+            if contrast_std < 0.15:  # Low contrast image
+                optimized_params['hist_eq_clip_limit'] = min(4.0, 2.0 + (0.2 - contrast_std) * 10.0)
+            elif local_contrast > 0.1:  # High local contrast
+                optimized_params['hist_eq_clip_limit'] = max(1.0, 2.0 - local_contrast * 5.0)
+            else:  # Normal contrast
+                optimized_params['hist_eq_clip_limit'] = 2.0
+            
+            # Adjust tile size based on image characteristics
+            height, width = img_gray.shape
+            
+            # For high local variation, use smaller tiles
+            if local_contrast > 0.08:
+                base_size = 6 if min(width, height) < 600 else 8
+            else:
+                base_size = 8 if min(width, height) < 600 else 12
+            
+            # If histogram is concentrated in middle, use larger tiles
+            if middle_range > 0.7:
+                base_size += 2
+            
+            optimized_params['hist_eq_tile_grid_size'] = min(16, max(4, base_size))
+            
+            return optimized_params
+            
+        except Exception as e:
+            print(f"Auto-tune histogram equalization error: {e}")
+            return {}
+    
+    def _auto_tune_multiscale_fusion(self, img: np.ndarray) -> dict:
+        """Auto-tune multiscale fusion based on image quality metrics"""
+        try:
+            if img is None:
+                return {}
+            
+            # Analyze image characteristics for fusion optimization
+            img_float = img.astype(np.float32) / 255.0
+            
+            # Calculate quality metrics
+            # Contrast analysis
+            img_gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            contrast_std = np.std(img_gray) / 255.0
+            
+            # Saturation analysis
+            hsv = cv2.cvtColor(img_float, cv2.COLOR_BGR2HSV)
+            saturation = hsv[:,:,1]
+            sat_mean = np.mean(saturation)
+            
+            # Exposedness analysis (how well exposed the image is)
+            luminance = 0.299 * img_float[:,:,2] + 0.587 * img_float[:,:,1] + 0.114 * img_float[:,:,0]
+            # Well-exposed regions are around 0.5 luminance
+            exposedness_map = np.exp(-0.5 * ((luminance - 0.5) / 0.25) ** 2)
+            exposedness_mean = np.mean(exposedness_map)
+            
+            # Edge/detail analysis
+            edges = cv2.Canny(img_gray, 50, 150)
+            edge_density = np.sum(edges > 0) / (edges.shape[0] * edges.shape[1])
+            
+            optimized_params = {}
+            
+            # Adjust pyramid levels based on image size and detail
+            height, width = img_gray.shape
+            base_levels = 4 if min(width, height) > 800 else 3
+            if edge_density > 0.1:  # High detail image
+                optimized_params['fusion_laplacian_levels'] = min(6, base_levels + 1)
+            else:
+                optimized_params['fusion_laplacian_levels'] = base_levels
+            
+            # Weight optimization based on image characteristics
+            
+            # Contrast weight: higher for low-contrast images
+            if contrast_std < 0.15:
+                optimized_params['fusion_contrast_weight'] = min(2.0, 1.0 + (0.2 - contrast_std) * 5.0)
+            else:
+                optimized_params['fusion_contrast_weight'] = 1.0
+            
+            # Saturation weight: higher for low-saturation images
+            if sat_mean < 0.3:
+                optimized_params['fusion_saturation_weight'] = min(2.0, 1.0 + (0.4 - sat_mean) * 2.0)
+            else:
+                optimized_params['fusion_saturation_weight'] = 1.0
+            
+            # Exposedness weight: higher for poorly exposed images
+            if exposedness_mean < 0.5:
+                optimized_params['fusion_exposedness_weight'] = min(2.0, 1.0 + (0.6 - exposedness_mean) * 2.0)
+            else:
+                optimized_params['fusion_exposedness_weight'] = 1.0
+            
+            # Sigma parameters based on image characteristics
+            # Smaller sigma for more detailed images
+            if edge_density > 0.08:
+                optimized_params['fusion_sigma_1'] = 0.15
+                optimized_params['fusion_sigma_2'] = 0.20
+                optimized_params['fusion_sigma_3'] = 0.15
+            else:
+                optimized_params['fusion_sigma_1'] = 0.20
+                optimized_params['fusion_sigma_2'] = 0.30
+                optimized_params['fusion_sigma_3'] = 0.20
+            
+            return optimized_params
+            
+        except Exception as e:
+            print(f"Auto-tune multiscale fusion error: {e}")
+            return {}

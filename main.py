@@ -77,8 +77,11 @@ class ImageVideoProcessorApp:
         self.notebook.add(params_frame, text=t('tab_parameters'))
         
         # Parameter panel
-        self.param_panel = ParameterPanel(params_frame, self.processor, self.update_preview)
+        self.param_panel = ParameterPanel(params_frame, self.processor, self.update_preview, lambda: self.original_image)
         self.param_panel.pack(fill=tk.BOTH, expand=True)
+        
+        # Setup auto-tune callback
+        self.processor.set_auto_tune_callback(self.param_panel.is_auto_tune_enabled)
         
         # Pipeline tab
         pipeline_frame = ttk.Frame(self.notebook)
