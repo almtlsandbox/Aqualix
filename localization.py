@@ -133,6 +133,9 @@ class LocalizationManager:
             'fit_image': 'Ajuster',
             'reset_view': '1:1',
             'rotation': 'Rotation',
+            'collapse_all': 'Réduire tout',
+            'expand_all': 'Développer tout',
+            'expand_all_sections': 'Développer toutes les sections',
             'no_image_loaded': 'Aucune image chargée',
             'preview_instructions': 'Contrôles: Clic gauche + glisser pour déplacer • Molette pour zoomer • Glisser la ligne de division',
             
@@ -372,6 +375,9 @@ class LocalizationManager:
             'fit_image': 'Fit',
             'reset_view': '1:1',
             'rotation': 'Rotation',
+            'collapse_all': 'Collapse All',
+            'expand_all': 'Expand All',
+            'expand_all_sections': 'Expand all sections',
             'no_image_loaded': 'No image loaded',
             'preview_instructions': 'Controls: Left click + drag to pan • Mouse wheel to zoom • Drag the split line',
             

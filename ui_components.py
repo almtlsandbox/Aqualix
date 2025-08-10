@@ -29,7 +29,23 @@ class ParameterPanel(ttk.Frame):
         """Setup the parameter panel UI"""
         # Title
         title_label = ttk.Label(self, text=t('parameters_title'), font=('Arial', 12, 'bold'))
-        title_label.pack(pady=(0, 10))
+        title_label.pack(pady=(0, 5))
+        
+        # Collapse/Expand control
+        controls_frame = ttk.Frame(self)
+        controls_frame.pack(fill=tk.X, pady=(0, 10))
+        
+        self.expand_all_var = tk.BooleanVar(value=False)  # Start with all collapsed
+        expand_all_checkbox = ttk.Checkbutton(
+            controls_frame, 
+            text=t('expand_all_sections'),
+            variable=self.expand_all_var,
+            command=self.toggle_all_sections
+        )
+        expand_all_checkbox.pack(side=tk.LEFT)
+        
+        # Store checkbox for refresh_ui
+        self.expand_all_checkbox = expand_all_checkbox
         
         # Scrollable frame for parameters
         canvas = tk.Canvas(self, height=500)
@@ -427,6 +443,34 @@ class ParameterPanel(ttk.Frame):
                 # Non-conditional parameters should always be visible
                 if frame.winfo_manager() == '':  # Not packed
                     frame.pack(fill=tk.X, padx=5, pady=2)
+    
+    def toggle_all_sections(self):
+        """Toggle all parameter step sections based on checkbox state"""
+        expand_all = self.expand_all_var.get()
+        
+        # Force all sections to the desired state
+        for step_key in self.step_expanded:
+            current_state = self.step_expanded[step_key].get()  # Use .get() for BooleanVar
+            
+            # Set to expanded state if checkbox is checked, collapsed if unchecked
+            if expand_all and not current_state:
+                # Need to expand this section
+                self.toggle_step_expansion(step_key)
+            elif not expand_all and current_state:
+                # Need to collapse this section  
+                self.toggle_step_expansion(step_key)
+    
+    def collapse_all_steps(self):
+        """Collapse all parameter step sections"""
+        for step_key in self.step_expanded:
+            if self.step_expanded[step_key].get():  # Only collapse if currently expanded, use .get()
+                self.toggle_step_expansion(step_key)
+    
+    def expand_all_steps(self):
+        """Expand all parameter step sections"""
+        for step_key in self.step_expanded:
+            if not self.step_expanded[step_key].get():  # Only expand if currently collapsed, use .get()
+                self.toggle_step_expansion(step_key)
         
     def refresh_ui(self):
         """Refresh UI texts after language change"""
@@ -435,6 +479,10 @@ class ParameterPanel(ttk.Frame):
             if isinstance(child, ttk.Label):
                 child.config(text=t('parameters_title'))
                 break
+        
+        # Update button texts
+        if hasattr(self, 'expand_all_checkbox'):
+            self.expand_all_checkbox.config(text=t('expand_all_sections'))
         
         # Clear existing parameter widgets
         for widget in self.scrollable_frame.winfo_children():
