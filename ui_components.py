@@ -20,6 +20,8 @@ class ParameterPanel(ttk.Frame):
         self.update_callback = update_callback
         self.param_widgets = {}
         self.frame_order = []  # Keep track of frame order for proper re-packing
+        self.step_frames = {}  # Store collapsible step frames
+        self.step_expanded = {}  # Track expanded/collapsed state
         
         self.setup_ui()
         
@@ -43,7 +45,7 @@ class ParameterPanel(ttk.Frame):
         canvas.configure(yscrollcommand=scrollbar.set)
         
         # Create parameter widgets
-        self.create_parameter_widgets(scrollable_frame)
+        self.create_step_based_widgets(scrollable_frame)
         
         # Initialize parameter visibility
         self.update_parameter_visibility()
@@ -55,8 +57,189 @@ class ParameterPanel(ttk.Frame):
         def _on_mousewheel(event):
             canvas.yview_scroll(int(-1*(event.delta/120)), "units")
         canvas.bind_all("<MouseWheel>", _on_mousewheel)
+    
+    def get_processing_steps(self):
+        """Get processing steps with their parameters organized by pipeline order"""
+        pipeline_order = self.processor.pipeline_order
+        param_info = self.processor.get_parameter_info()
+        
+        steps = {}
+        
+        # Define step configurations
+        step_configs = {
+            'white_balance': {
+                'title': 'Balance des blancs',
+                'description': 'Correction de la température de couleur',
+                'enable_param': 'white_balance_enabled',
+                'method_param': 'white_balance_method',
+                'parameters': [
+                    'white_balance_method',
+                    'gray_world_percentile', 'gray_world_max_adjustment',
+                    'white_patch_percentile', 'white_patch_max_adjustment',
+                    'shades_of_gray_norm', 'shades_of_gray_percentile', 'shades_of_gray_max_adjustment',
+                    'grey_edge_norm', 'grey_edge_sigma', 'grey_edge_max_adjustment'
+                ]
+            },
+            'udcp': {
+                'title': 'UDCP (Underwater Dark Channel Prior)',
+                'description': 'Amélioration spécialisée pour images sous-marines',
+                'enable_param': 'udcp_enabled',
+                'parameters': [
+                    'udcp_omega', 'udcp_t0', 'udcp_window_size',
+                    'udcp_guided_radius', 'udcp_guided_eps', 'udcp_enhance_contrast'
+                ]
+            },
+            'histogram_equalization': {
+                'title': 'Égalisation d\'histogramme (CLAHE)',
+                'description': 'Amélioration du contraste local',
+                'enable_param': 'hist_eq_enabled',
+                'parameters': [
+                    'hist_eq_clip_limit', 'hist_eq_tile_grid_size'
+                ]
+            }
+        }
+        
+        # Build steps in pipeline order
+        for step_key in pipeline_order:
+            if step_key in step_configs:
+                config = step_configs[step_key]
+                step_params = []
+                
+                # Add parameters that exist in param_info
+                for param_name in config['parameters']:
+                    if param_name in param_info:
+                        step_params.append({
+                            'name': param_name,
+                            'info': param_info[param_name]
+                        })
+                
+                steps[step_key] = {
+                    'title': config['title'],
+                    'description': config['description'],
+                    'enable_param': config['enable_param'],
+                    'method_param': config.get('method_param'),
+                    'parameters': step_params,
+                    'order': pipeline_order.index(step_key)
+                }
+        
+        return steps
+        
+    def create_step_based_widgets(self, parent):
+        """Create widgets organized by processing steps"""
+        steps = self.get_processing_steps()
+        
+        # Create widgets for each step in order
+        sorted_steps = sorted(steps.items(), key=lambda x: x[1]['order'])
+        
+        for step_key, step_info in sorted_steps:
+            self.create_step_frame(parent, step_key, step_info)
+        
+    def create_step_frame(self, parent, step_key, step_info):
+        """Create a collapsible frame for a processing step"""
+        # Main step frame
+        step_frame = ttk.LabelFrame(parent, text="", padding="5")
+        step_frame.pack(fill=tk.X, padx=5, pady=5)
+        
+        # Header frame with enable/disable and collapse/expand
+        header_frame = ttk.Frame(step_frame)
+        header_frame.pack(fill=tk.X, pady=(0, 5))
+        
+        # Step enable/disable checkbox
+        enable_var = tk.BooleanVar(value=self.processor.get_parameter(step_info['enable_param']))
+        enable_checkbox = ttk.Checkbutton(
+            header_frame,
+            text=step_info['title'],
+            variable=enable_var,
+            command=lambda: self.on_parameter_change(step_info['enable_param'], enable_var.get())
+        )
+        enable_checkbox.pack(side=tk.LEFT)
+        
+        # Store enable widget
+        self.param_widgets[step_info['enable_param']] = enable_var
+        
+        # Collapse/Expand button
+        self.step_expanded[step_key] = tk.BooleanVar(value=False)  # Collapsed by default
+        expand_button = ttk.Button(
+            header_frame,
+            text="▶",
+            width=3,
+            command=lambda: self.toggle_step_expansion(step_key)
+        )
+        expand_button.pack(side=tk.RIGHT)
+        
+        # Description label
+        desc_label = ttk.Label(step_frame, text=step_info['description'], 
+                             font=('Arial', 9), foreground='gray')
+        desc_label.pack(anchor='w', pady=(0, 5))
+        
+        # Parameters frame (collapsible)
+        params_frame = ttk.Frame(step_frame)
+        # Don't pack initially - will be shown/hidden by toggle_step_expansion
+        
+        # Create parameter widgets within this step
+        for param_info in step_info['parameters']:
+            self.create_single_parameter_widget(params_frame, param_info['name'], param_info['info'])
+        
+        # Store references
+        self.step_frames[step_key] = {
+            'main_frame': step_frame,
+            'params_frame': params_frame,
+            'expand_button': expand_button,
+            'enable_checkbox': enable_checkbox
+        }
+        
+    def create_single_parameter_widget(self, parent, param_name, info):
+        """Create a single parameter widget"""
+        frame = ttk.Frame(parent)
+        frame.pack(fill=tk.X, padx=10, pady=2)
+        
+        # Parameter label
+        label = ttk.Label(frame, text=info['label'], font=('Arial', 9))
+        label.pack(anchor='w')
+        
+        # Description
+        if info.get('description'):
+            desc_label = ttk.Label(frame, text=info['description'], 
+                                 font=('Arial', 8), foreground='gray')
+            desc_label.pack(anchor='w', padx=(10, 0))
+        
+        # Create appropriate widget based on parameter type
+        widget_frame = ttk.Frame(frame)
+        widget_frame.pack(fill=tk.X, padx=(10, 0), pady=2)
+        
+        if info['type'] == 'boolean':
+            self.create_boolean_widget(widget_frame, param_name, info)
+        elif info['type'] == 'float':
+            self.create_float_widget(widget_frame, param_name, info)
+        elif info['type'] == 'int':
+            self.create_int_widget(widget_frame, param_name, info)
+        elif info['type'] == 'choice':
+            self.create_choice_widget(widget_frame, param_name, info)
+        
+        # Store frame reference for visibility control
+        self.param_widgets[f"{param_name}_frame"] = frame
+        self.frame_order.append((param_name, frame))
+        
+    def toggle_step_expansion(self, step_key):
+        """Toggle the expansion state of a step"""
+        is_expanded = self.step_expanded[step_key].get()
+        new_state = not is_expanded
+        self.step_expanded[step_key].set(new_state)
+        
+        # Update button text and frame visibility
+        step_frame_info = self.step_frames[step_key]
+        button = step_frame_info['expand_button']
+        params_frame = step_frame_info['params_frame']
+        
+        if new_state:  # Expanding
+            button.config(text="▼")
+            params_frame.pack(fill=tk.X)
+        else:  # Collapsing
+            button.config(text="▶")
+            params_frame.pack_forget()
         
     def create_parameter_widgets(self, parent):
+        """Legacy method - kept for compatibility but replaced by create_step_based_widgets"""
         """Create widgets for all parameters"""
         param_info = self.processor.get_parameter_info()
         
