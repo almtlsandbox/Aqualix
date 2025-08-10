@@ -5,6 +5,48 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [2.0.0] - 2025-08-10
+
+### 🌊 Ajouté - Version Majeure
+- **Fusion Multi-échelles (Méthode Ancuti)** ⭐
+  - Fusion robuste de 3 variantes d'amélioration (WB+contraste, WB+netteté, UDCP)
+  - Traitement par pyramides Laplaciennes multi-résolutions
+  - Mesures de qualité : contraste, saturation, exposition optimale
+  - 7 paramètres configurables pour un contrôle fin
+  - Algorithme de pointe pour des résultats professionnels
+
+- **Rééquilibrage Couleur 3×3 avec Garde-fous Anti-Magenta** 🎨
+  - Matrice de transformation 3×3 entièrement configurable
+  - Protection contre les artefacts magenta (limite de saturation)
+  - Option de préservation de la luminance
+  - 12 paramètres pour un contrôle colorimétrique précis
+
+- **Boutons Reset par Section** 🔄
+  - Reset ciblé par étape de traitement
+  - Interface intuitive et organisation claire
+  - Restauration rapide des paramètres par défaut
+
+### 🏗️ Pipeline Complet (6 Étapes)
+1. **Balance des Blancs** (4 méthodes dont Eau Verte Lac)
+2. **UDCP** (Underwater Dark Channel Prior)
+3. **Correction Beer-Lambert** 
+4. **Rééquilibrage Couleur 3×3** + Anti-magenta
+5. **Égalisation d'Histogramme** (CLAHE)
+6. **Fusion Multi-échelles** (Ancuti)
+
+### 🎛️ Interface Utilisateur
+- **30+ paramètres configurables** à travers 6 étapes
+- **Sections pliables** avec organisation par étape
+- **Aperçu en temps réel** optimisé
+- **Support bilingue complet** (Français/Anglais)
+- **Visualisation du pipeline** avec descriptions détaillées
+
+### 🔬 Techniques
+- **Algorithmes de traitement d'image professionnels**
+- **Optimisation mémoire** pour haute résolution
+- **Validation robuste** et gestion d'erreurs
+- **Performance optimisée** (~50ms par étape)
+
 ## [1.2.0] - 2025-08-10
 
 ### Ajouté
