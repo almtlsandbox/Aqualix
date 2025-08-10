@@ -124,6 +124,97 @@ class ImageProcessor:
         """Get all parameters"""
         return self.parameters.copy()
         
+    def get_default_parameters(self) -> Dict[str, Any]:
+        """Get default parameters (copy of initial values)"""
+        # Return the default parameters defined at class level
+        return {
+            # White balance parameters
+            'white_balance_enabled': True,
+            'white_balance_method': 'gray_world',
+            
+            # Gray-world parameters
+            'gray_world_threshold': 0.3,
+            'gray_world_max_adjustment': 2.5,
+            
+            # White-patch parameters
+            'white_patch_percentile': 99,
+            'white_patch_max_adjustment': 2.0,
+            
+            # Shades-of-gray parameters
+            'shades_of_gray_norm': 6,
+            'shades_of_gray_percentile': 50,
+            'shades_of_gray_max_adjustment': 2.0,
+            
+            # Grey-edge parameters
+            'grey_edge_norm': 1,
+            'grey_edge_sigma': 1,
+            'grey_edge_max_adjustment': 2.0,
+            
+            # Lake green water parameters
+            'lake_green_reduction': 0.7,
+            'lake_magenta_strength': 0.2,
+            'lake_gray_world_influence': 0.8,
+            
+            # UDCP parameters
+            'udcp_enabled': True,
+            'udcp_omega': 0.95,
+            'udcp_t0': 0.1,
+            'udcp_window_size': 15,
+            'udcp_guided_radius': 60,
+            'udcp_guided_epsilon': 0.001,
+            'udcp_enhance_factor': 1.0,
+            
+            # Beer-Lambert correction parameters
+            'beer_lambert_enabled': True,
+            'beer_lambert_depth_factor': 10.0,
+            'beer_lambert_red_coeff': 0.6,
+            'beer_lambert_green_coeff': 0.3,
+            'beer_lambert_blue_coeff': 0.1,
+            'beer_lambert_enhance_factor': 1.5,
+            
+            # Color Rebalancing parameters
+            'color_rebalance_enabled': True,
+            'color_rebalance_rr': 1.0,
+            'color_rebalance_rg': 0.0,
+            'color_rebalance_rb': 0.0,
+            'color_rebalance_gr': 0.0,
+            'color_rebalance_gg': 1.0,
+            'color_rebalance_gb': 0.0,
+            'color_rebalance_br': 0.0,
+            'color_rebalance_bg': 0.0,
+            'color_rebalance_bb': 1.0,
+            'color_rebalance_saturation_limit': 1.0,
+            'color_rebalance_preserve_luminance': False,
+            
+            # Histogram equalization parameters
+            'hist_eq_enabled': True,
+            'hist_eq_clip_limit': 3.0,
+            'hist_eq_tile_grid_size': 8,
+            'hist_eq_tile_grid_adaptive': True
+        }
+    
+    def reset_step_parameters(self, step_key: str):
+        """Reset parameters for a specific processing step to defaults"""
+        defaults = self.get_default_parameters()
+        
+        # Define parameter prefixes for each step
+        step_prefixes = {
+            'white_balance': ['white_balance_', 'gray_world_', 'white_patch_', 'shades_of_gray_', 'grey_edge_', 'lake_'],
+            'udcp': ['udcp_'],
+            'beer_lambert': ['beer_lambert_'],
+            'color_rebalance': ['color_rebalance_'],
+            'histogram_equalization': ['hist_eq_']
+        }
+        
+        if step_key not in step_prefixes:
+            return
+            
+        # Reset parameters that match the step prefixes
+        for prefix in step_prefixes[step_key]:
+            for param_name, default_value in defaults.items():
+                if param_name.startswith(prefix):
+                    self.set_parameter(param_name, default_value)
+        
     def process_image(self, image: np.ndarray) -> np.ndarray:
         """Process an image through the complete pipeline"""
         result = image.copy()
@@ -166,6 +257,8 @@ class ImageProcessor:
                 processed_preview = self.underwater_dark_channel_prior(processed_preview)
             elif operation == 'beer_lambert' and self.parameters['beer_lambert_enabled']:
                 processed_preview = self.beer_lambert_correction(processed_preview)
+            elif operation == 'color_rebalance' and self.parameters['color_rebalance_enabled']:
+                processed_preview = self.color_rebalance(processed_preview)
             elif operation == 'histogram_equalization' and self.parameters['hist_eq_enabled']:
                 processed_preview = self.adaptive_histogram_equalization(processed_preview)
                 

@@ -211,15 +211,28 @@ class ParameterPanel(ttk.Frame):
         # Store enable widget
         self.param_widgets[step_info['enable_param']] = enable_var
         
+        # Right side buttons frame
+        buttons_frame = ttk.Frame(header_frame)
+        buttons_frame.pack(side=tk.RIGHT)
+        
+        # Reset to defaults button
+        reset_button = ttk.Button(
+            buttons_frame,
+            text=t('reset_defaults'),
+            width=8,
+            command=lambda: self.reset_step_defaults(step_key)
+        )
+        reset_button.pack(side=tk.LEFT, padx=(0, 2))
+        
         # Collapse/Expand button
         self.step_expanded[step_key] = tk.BooleanVar(value=False)  # Collapsed by default
         expand_button = ttk.Button(
-            header_frame,
+            buttons_frame,
             text="▶",
             width=3,
             command=lambda: self.toggle_step_expansion(step_key)
         )
-        expand_button.pack(side=tk.RIGHT)
+        expand_button.pack(side=tk.LEFT)
         
         # Description label
         desc_label = ttk.Label(step_frame, text=step_info['description'], 
@@ -486,6 +499,38 @@ class ParameterPanel(ttk.Frame):
             elif not expand_all and current_state:
                 # Need to collapse this section  
                 self.toggle_step_expansion(step_key)
+    
+    def reset_step_defaults(self, step_key: str):
+        """Reset parameters for a specific step to their default values"""
+        try:
+            # Reset parameters in the processor
+            self.processor.reset_step_parameters(step_key)
+            
+            # Update UI widgets to reflect the new values
+            self.update_ui_from_parameters()
+            
+            # Trigger preview update
+            self.update_callback()
+            
+        except Exception as e:
+            print(f"Error resetting step {step_key}: {e}")
+    
+    def update_ui_from_parameters(self):
+        """Update all UI widgets to match current parameter values"""
+        for param_name, widget in self.param_widgets.items():
+            try:
+                current_value = self.processor.get_parameter(param_name)
+                if hasattr(widget, 'set'):
+                    # For tk variables (BooleanVar, StringVar, etc.)
+                    widget.set(current_value)
+                elif hasattr(widget, 'configure'):
+                    # For other widgets like Scale
+                    widget.configure(value=current_value)
+            except Exception as e:
+                print(f"Error updating widget for {param_name}: {e}")
+        
+        # Update parameter visibility after reset
+        self.update_parameter_visibility()
     
     def collapse_all_steps(self):
         """Collapse all parameter step sections"""
