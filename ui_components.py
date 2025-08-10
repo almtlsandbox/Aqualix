@@ -77,7 +77,8 @@ class ParameterPanel(ttk.Frame):
                     'gray_world_percentile', 'gray_world_max_adjustment',
                     'white_patch_percentile', 'white_patch_max_adjustment',
                     'shades_of_gray_norm', 'shades_of_gray_percentile', 'shades_of_gray_max_adjustment',
-                    'grey_edge_norm', 'grey_edge_sigma', 'grey_edge_max_adjustment'
+                    'grey_edge_norm', 'grey_edge_sigma', 'grey_edge_max_adjustment',
+                    'lake_green_reduction', 'lake_magenta_strength', 'lake_gray_world_influence'
                 ]
             },
             'udcp': {

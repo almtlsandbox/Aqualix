@@ -92,6 +92,7 @@ class LocalizationManager:
             'white_balance_white_patch': 'Balance des blancs White-Patch',
             'white_balance_shades_of_gray': 'Balance des blancs Shades-of-Gray',
             'white_balance_grey_edge': 'Balance des blancs Grey-Edge',
+            'white_balance_lake_green_water': 'Balance des blancs Eau Verte (Lac)',
             
             'operation_gw': 'Balance des blancs Gray-World',
             'operation_gw_desc': 'Corrige la température de couleur en assumant que la moyenne de la scène devrait être grise neutre.',
@@ -101,6 +102,8 @@ class LocalizationManager:
             'operation_sog_desc': 'Généralisation de Gray-World utilisant la norme de Minkowski pour une meilleure robustesse.',
             'operation_ge': 'Balance des blancs Grey-Edge',
             'operation_ge_desc': 'Utilise les dérivées spatiales pour estimer l\'illumination de la scène.',
+            'operation_lgw': 'Balance des blancs Eau Verte (Lac)',
+            'operation_lgw_desc': 'Spécialisé pour les eaux vertes de lac avec réduction ciblée du vert et compensation magenta.',
             
             # UDCP method
             'udcp_title': 'UDCP (Underwater Dark Channel Prior)',
@@ -237,6 +240,7 @@ class LocalizationManager:
             'white_balance_white_patch': 'White-Patch White Balance',
             'white_balance_shades_of_gray': 'Shades-of-Gray White Balance',
             'white_balance_grey_edge': 'Grey-Edge White Balance',
+            'white_balance_lake_green_water': 'Lake Green Water White Balance',
             
             'operation_gw': 'Gray-World White Balance',
             'operation_gw_desc': 'Corrects color temperature by assuming the scene average should be neutral gray.',
@@ -246,6 +250,8 @@ class LocalizationManager:
             'operation_sog_desc': 'Generalization of Gray-World using Minkowski norm for better robustness.',
             'operation_ge': 'Grey-Edge White Balance',
             'operation_ge_desc': 'Uses spatial derivatives to estimate scene illumination.',
+            'operation_lgw': 'Lake Green Water White Balance',
+            'operation_lgw_desc': 'Specialized for green lake water with targeted green reduction and magenta compensation.',
             
             # UDCP method
             'udcp_title': 'UDCP (Underwater Dark Channel Prior)',

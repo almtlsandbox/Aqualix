@@ -59,6 +59,11 @@ class ImageProcessor:
             'grey_edge_sigma': 1,
             'grey_edge_max_adjustment': 2.0,
             
+            # Lake Green Water white balance parameters
+            'lake_green_reduction': 0.3,        # Strength of green channel reduction (0.0-1.0)
+            'lake_magenta_strength': 0.15,      # Magenta compensation strength (0.0-0.5)
+            'lake_gray_world_influence': 0.7,   # Influence of gray-world correction (0.0-1.0)
+            
             # UDCP (Underwater Dark Channel Prior) parameters
             'udcp_enabled': True,
             'udcp_omega': 0.95,           # Amount of haze to keep (0.95 = remove 95% of haze)
@@ -147,6 +152,8 @@ class ImageProcessor:
             return self.shades_of_gray_white_balance(image)
         elif method == 'grey_edge':
             return self.grey_edge_white_balance(image)
+        elif method == 'lake_green_water':
+            return self.lake_green_water_white_balance(image)
         else:
             return image
         
@@ -355,6 +362,94 @@ class ImageProcessor:
                 print("Scipy not available, falling back to gray-world method")
                 return self.gray_world_white_balance(image)
             return image
+    
+    def lake_green_water_white_balance(self, image: np.ndarray) -> np.ndarray:
+        """
+        Specialized white balance for green lake/freshwater environments.
+        Combines targeted green reduction (magenta compensation) with Gray-World balancing.
+        
+        This method is designed specifically for underwater photography in lakes and
+        freshwater environments where green algae and vegetation create a strong
+        green color cast that standard methods struggle to correct.
+        
+        Returns:
+            np.ndarray: White balanced image
+        """
+        try:
+            # Get parameters
+            green_reduction = self.parameters.get('lake_green_reduction', 0.3)
+            magenta_strength = self.parameters.get('lake_magenta_strength', 0.15)
+            gray_world_influence = self.parameters.get('lake_gray_world_influence', 0.7)
+            
+            # Convert to float
+            img_float = image.astype(np.float32) / 255.0
+            height, width = img_float.shape[:2]
+            
+            # Step 1: Targeted green reduction
+            # Create magenta compensation by reducing green channel relative to red/blue
+            b_channel, g_channel, r_channel = cv2.split(img_float)
+            
+            # Calculate green dominance relative to red and blue
+            rg_ratio = np.divide(r_channel, g_channel + 1e-6)
+            bg_ratio = np.divide(b_channel, g_channel + 1e-6)
+            
+            # Create adaptive green reduction mask
+            # More reduction where green is dominant (low red/blue ratios)
+            green_dominance = 1.0 / (1.0 + rg_ratio + bg_ratio)
+            green_reduction_mask = green_dominance * green_reduction
+            
+            # Apply adaptive green reduction
+            g_channel_corrected = g_channel * (1.0 - green_reduction_mask)
+            
+            # Step 2: Magenta compensation
+            # Boost red and blue channels proportionally to counteract green cast
+            magenta_boost = magenta_strength * green_dominance
+            r_channel_boosted = r_channel * (1.0 + magenta_boost)
+            b_channel_boosted = b_channel * (1.0 + magenta_boost)
+            
+            # Reconstruct image with corrections
+            img_corrected = cv2.merge([b_channel_boosted, g_channel_corrected, r_channel_boosted])
+            
+            # Step 3: Apply Gray-World balancing to the corrected image
+            # Calculate mean values for each channel
+            r_mean = np.mean(img_corrected[:, :, 2])
+            g_mean = np.mean(img_corrected[:, :, 1])
+            b_mean = np.mean(img_corrected[:, :, 0])
+            
+            # Calculate overall mean
+            gray_mean = (r_mean + g_mean + b_mean) / 3.0
+            
+            if gray_mean > 0:
+                # Calculate Gray-World scaling factors
+                r_scale_gw = gray_mean / (r_mean + 1e-6)
+                g_scale_gw = gray_mean / (g_mean + 1e-6)
+                b_scale_gw = gray_mean / (b_mean + 1e-6)
+                
+                # Limit Gray-World adjustment to prevent overcorrection
+                max_gw_adjustment = 2.0
+                r_scale_gw = np.clip(r_scale_gw, 1/max_gw_adjustment, max_gw_adjustment)
+                g_scale_gw = np.clip(g_scale_gw, 1/max_gw_adjustment, max_gw_adjustment)
+                b_scale_gw = np.clip(b_scale_gw, 1/max_gw_adjustment, max_gw_adjustment)
+                
+                # Blend Gray-World correction with current state
+                influence = gray_world_influence
+                r_scale_final = 1.0 + influence * (r_scale_gw - 1.0)
+                g_scale_final = 1.0 + influence * (g_scale_gw - 1.0)
+                b_scale_final = 1.0 + influence * (b_scale_gw - 1.0)
+                
+                # Apply final scaling
+                img_corrected[:, :, 2] *= r_scale_final
+                img_corrected[:, :, 1] *= g_scale_final
+                img_corrected[:, :, 0] *= b_scale_final
+            
+            # Convert back to uint8
+            result = np.clip(img_corrected * 255.0, 0, 255).astype(np.uint8)
+            return result
+            
+        except Exception as e:
+            print(f"Error in lake green water white balance: {e}")
+            # Fallback to standard gray-world method
+            return self.gray_world_white_balance(image)
             
     def underwater_dark_channel_prior(self, image: np.ndarray) -> np.ndarray:
         """
@@ -590,6 +685,8 @@ class ImageProcessor:
             return f"Norme: {self.parameters['shades_of_gray_norm']}, Percentile: {self.parameters['shades_of_gray_percentile']}%, Max ajustement: {self.parameters['shades_of_gray_max_adjustment']}"
         elif method == 'grey_edge':
             return f"Norme: {self.parameters['grey_edge_norm']}, Sigma: {self.parameters['grey_edge_sigma']}, Max ajustement: {self.parameters['grey_edge_max_adjustment']}"
+        elif method == 'lake_green_water':
+            return f"Réduction vert: {self.parameters['lake_green_reduction']:.2f}, Magenta: {self.parameters['lake_magenta_strength']:.2f}, Gray-World: {self.parameters['lake_gray_world_influence']:.2f}"
         else:
             return ""
         
@@ -605,7 +702,8 @@ class ImageProcessor:
                     ('gray_world', 'Gray-World'),
                     ('white_patch', 'White-Patch'),
                     ('shades_of_gray', 'Shades-of-Gray'),
-                    ('grey_edge', 'Grey-Edge')
+                    ('grey_edge', 'Grey-Edge'),
+                    ('lake_green_water', 'Eau Verte (Lac)')
                 ]
             },
             'white_balance_enabled': {
@@ -710,6 +808,35 @@ class ImageProcessor:
                 'max': 5.0,
                 'step': 0.1,
                 'visible_when': {'white_balance_method': 'grey_edge'}
+            },
+            
+            # Lake Green Water white balance parameters
+            'lake_green_reduction': {
+                'type': 'float',
+                'label': 'Réduction du vert',
+                'description': 'Intensité de la réduction du canal vert (0.0 = aucune, 1.0 = maximum)',
+                'min': 0.0,
+                'max': 1.0,
+                'step': 0.05,
+                'visible_when': {'white_balance_method': 'lake_green_water'}
+            },
+            'lake_magenta_strength': {
+                'type': 'float',
+                'label': 'Force magenta',
+                'description': 'Intensité de la compensation magenta (rouge+bleu vs vert)',
+                'min': 0.0,
+                'max': 0.5,
+                'step': 0.02,
+                'visible_when': {'white_balance_method': 'lake_green_water'}
+            },
+            'lake_gray_world_influence': {
+                'type': 'float',
+                'label': 'Influence Gray-World',
+                'description': 'Influence de la correction Gray-World finale (0.0 = aucune, 1.0 = maximum)',
+                'min': 0.0,
+                'max': 1.0,
+                'step': 0.1,
+                'visible_when': {'white_balance_method': 'lake_green_water'}
             },
             
             # UDCP (Underwater Dark Channel Prior) parameters
