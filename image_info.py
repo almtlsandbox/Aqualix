@@ -70,18 +70,31 @@ class ImageInfoExtractor:
         
     def _get_file_info(self, file_path):
         """Get basic file information"""
-        stat = file_path.stat()
-        
-        return {
-            'name': file_path.name,
-            'path': str(file_path.absolute()),
-            'size': self._format_size(stat.st_size),
-            'size_bytes': stat.st_size,
-            'modified': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S'),
-            'created': datetime.fromtimestamp(stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S'),
-            'extension': file_path.suffix.lower(),
-            'hash_md5': self._get_file_hash(file_path)
-        }
+        try:
+            stat = file_path.stat()
+            
+            return {
+                'name': file_path.name,
+                'path': str(file_path.absolute()),
+                'size': self._format_size(stat.st_size),
+                'size_bytes': stat.st_size,
+                'modified': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S'),
+                'created': datetime.fromtimestamp(stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S'),
+                'extension': file_path.suffix.lower(),
+                'hash_md5': self._get_file_hash(file_path)
+            }
+        except Exception as e:
+            # Return basic info even if stat fails
+            return {
+                'name': file_path.name if hasattr(file_path, 'name') else 'N/A',
+                'path': str(file_path) if file_path else 'N/A',
+                'size': 'N/A',
+                'size_bytes': 0,
+                'modified': 'N/A',
+                'created': 'N/A',
+                'extension': file_path.suffix.lower() if hasattr(file_path, 'suffix') else 'N/A',
+                'hash_md5': 'N/A'
+            }
         
     def _get_image_properties(self, image_path):
         """Get image properties using OpenCV and PIL"""
@@ -162,7 +175,15 @@ class ImageInfoExtractor:
         
         try:
             with Image.open(image_path) as img:
-                if hasattr(img, '_getexif'):
+                # Use getexif() method (modern approach)
+                if hasattr(img, 'getexif'):
+                    exif = img.getexif()
+                    if exif is not None:
+                        for tag_id, value in exif.items():
+                            tag = TAGS.get(tag_id, tag_id)
+                            exif_data[tag] = str(value)
+                # Fallback to older method if needed
+                elif hasattr(img, '_getexif'):
                     exif = img._getexif()
                     if exif is not None:
                         for tag_id, value in exif.items():
@@ -219,25 +240,42 @@ class ImageInfoExtractor:
         
     def _format_size(self, size_bytes):
         """Format file size in human readable format"""
-        if size_bytes < 1024:
-            return f"{size_bytes} B"
-        elif size_bytes < 1024 * 1024:
-            return f"{size_bytes / 1024:.1f} KB"
-        elif size_bytes < 1024 * 1024 * 1024:
-            return f"{size_bytes / (1024 * 1024):.1f} MB"
-        else:
-            return f"{size_bytes / (1024 * 1024 * 1024):.1f} GB"
+        try:
+            # Ensure size_bytes is a number
+            if not isinstance(size_bytes, (int, float)) or size_bytes < 0:
+                return "N/A"
+                
+            size_bytes = int(size_bytes)
+            
+            if size_bytes < 1024:
+                return f"{size_bytes} B"
+            elif size_bytes < 1024 * 1024:
+                return f"{size_bytes / 1024:.1f} KB"
+            elif size_bytes < 1024 * 1024 * 1024:
+                return f"{size_bytes / (1024 * 1024):.1f} MB"
+            else:
+                return f"{size_bytes / (1024 * 1024 * 1024):.1f} GB"
+        except (TypeError, ValueError):
+            return "N/A"
             
     def _format_duration(self, seconds):
         """Format duration in human readable format"""
-        hours = int(seconds // 3600)
-        minutes = int((seconds % 3600) // 60)
-        secs = int(seconds % 60)
-        
-        if hours > 0:
-            return f"{hours:02d}:{minutes:02d}:{secs:02d}"
-        else:
-            return f"{minutes:02d}:{secs:02d}"
+        try:
+            # Ensure seconds is a number
+            if not isinstance(seconds, (int, float)) or seconds < 0:
+                return "N/A"
+                
+            seconds = float(seconds)
+            hours = int(seconds // 3600)
+            minutes = int((seconds % 3600) // 60)
+            secs = int(seconds % 60)
+            
+            if hours > 0:
+                return f"{hours:02d}:{minutes:02d}:{secs:02d}"
+            else:
+                return f"{minutes:02d}:{secs:02d}"
+        except (TypeError, ValueError):
+            return "N/A"
             
     def _decode_fourcc(self, fourcc_int):
         """Decode FOURCC code to string"""

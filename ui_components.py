@@ -732,7 +732,7 @@ class ImageInfoPanel(ttk.Frame):
                 ("Largeur", f"{props.get('width', 'N/A')} px"),
                 ("Hauteur", f"{props.get('height', 'N/A')} px"),
                 ("Canaux", str(props.get('channels', 'N/A'))),
-                ("Pixels totaux", f"{props.get('total_pixels', 'N/A'):,}" if props.get('total_pixels') else 'N/A'),
+                ("Pixels totaux", f"{props.get('total_pixels', 0):,}" if isinstance(props.get('total_pixels'), int) and props.get('total_pixels') else 'N/A'),
                 ("Ratio d'aspect", str(props.get('aspect_ratio', 'N/A'))),
                 ("Format", str(props.get('format', 'N/A'))),
                 ("Mode", str(props.get('mode', 'N/A'))),
@@ -774,7 +774,7 @@ class ImageInfoPanel(ttk.Frame):
                 ("Luminosité", str(analysis.get('brightness', 'N/A'))),
                 ("Contraste", str(analysis.get('contrast', 'N/A'))),
                 ("Temp. couleur estimée", f"{analysis.get('estimated_color_temp', 'N/A')} K"),
-                ("Couleurs uniques", f"{analysis.get('unique_colors', 'N/A'):,}" if analysis.get('unique_colors') else 'N/A')
+                ("Couleurs uniques", f"{analysis.get('unique_colors', 0):,}" if isinstance(analysis.get('unique_colors'), int) and analysis.get('unique_colors') else 'N/A')
             ]
         else:  # Grayscale analysis
             info_items = [
