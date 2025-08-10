@@ -114,7 +114,7 @@ class AqualixCLI:
                 output_path = Path(output_path)
                 
             # Setup video writer
-            fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+            fourcc = cv2.VideoWriter.fourcc(*'mp4v')
             out = cv2.VideoWriter(str(output_path), fourcc, fps, (width, height))
             
             frame_count = 0

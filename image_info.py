@@ -182,13 +182,7 @@ class ImageInfoExtractor:
                         for tag_id, value in exif.items():
                             tag = TAGS.get(tag_id, tag_id)
                             exif_data[tag] = str(value)
-                # Fallback to older method if needed
-                elif hasattr(img, '_getexif'):
-                    exif = img._getexif()
-                    if exif is not None:
-                        for tag_id, value in exif.items():
-                            tag = TAGS.get(tag_id, tag_id)
-                            exif_data[tag] = str(value)
+                # Modern getexif is sufficient, no fallback needed
         except Exception:
             pass
             

@@ -242,6 +242,9 @@ class ImageVideoProcessorApp:
         self.video_frame.pack_forget()
         
         try:
+            if self.current_file is None:
+                raise ValueError("No file selected")
+                
             # Load image using OpenCV
             self.original_image = cv2.imread(self.current_file)
             if self.original_image is None:
@@ -265,8 +268,14 @@ class ImageVideoProcessorApp:
             # Release previous video capture if exists
             if self.video_capture:
                 self.video_capture.release()
+            
+            if self.current_file is None:
+                raise ValueError("No file selected")
                 
             self.video_capture = cv2.VideoCapture(self.current_file)
+            if not self.video_capture.isOpened():
+                raise ValueError("Could not open video file")
+                
             self.total_frames = int(self.video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
             
             # Setup frame slider
@@ -357,6 +366,9 @@ class ImageVideoProcessorApp:
         
         if file_path:
             try:
+                if self.processed_image is None:
+                    raise ValueError("No processed image to save")
+                    
                 # Convert RGB to BGR for saving
                 image_bgr = cv2.cvtColor(self.processed_image, cv2.COLOR_RGB2BGR)
                 cv2.imwrite(file_path, image_bgr)
@@ -394,13 +406,16 @@ class ImageVideoProcessorApp:
             # Process video in a separate thread
             def process_video():
                 try:
+                    if self.video_capture is None:
+                        raise ValueError("No video loaded")
+                        
                     # Get video properties
                     fps = int(self.video_capture.get(cv2.CAP_PROP_FPS))
                     width = int(self.video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
                     height = int(self.video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
                     
                     # Create video writer
-                    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                    fourcc = cv2.VideoWriter.fourcc(*'mp4v')
                     out = cv2.VideoWriter(file_path, fourcc, fps, (width, height))
                     
                     # Process each frame
