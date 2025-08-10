@@ -8,6 +8,14 @@ et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 ## [1.2.0] - 2025-08-10
 
 ### Ajouté
+- **UDCP (Underwater Dark Channel Prior)** 🌊
+  - Nouveau algorithme spécialisé pour l'amélioration des images sous-marines
+  - Suppression automatique du voile et amélioration de la visibilité
+  - Paramètres ajustables : omega, transmission minimale, taille de fenêtre
+  - Filtre guidé pour le raffinement de la carte de transmission
+  - Amélioration optionnelle du contraste final
+  - Interface bilingue complète avec descriptions détaillées
+
 - **Optimisation des performances pour les grandes images**
   - Sous-échantillonnage automatique pour l'aperçu (images >1024px)
   - Traitement pleine résolution maintenu pour la sauvegarde
@@ -15,16 +23,24 @@ et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
   - Journalisation automatique du facteur d'échelle dans les logs
 
 ### Amélioré
+- **Pipeline de traitement étendu**
+  - Ordre optimal : White Balance → UDCP → Histogram Equalization
+  - Interface de paramètres dynamique avec visibilité conditionnelle
+  - Descriptions détaillées du pipeline en temps réel
+  
 - **Interface utilisateur**
   - Fluidité améliorée avec les images haute résolution
   - Temps de réponse réduit lors du changement de paramètres
   - Meilleure expérience utilisateur globale
+  - Nouvelles traductions pour les fonctionnalités UDCP
 
 ### Technique
+- Implémentation complète de l'algorithme UDCP avec filtre guidé
 - Nouvelle fonction `create_preview_image()` pour le sous-échantillonnage
 - Méthode `process_image_for_preview()` dans `ImageProcessor`
 - Gestion automatique des facteurs d'échelle
 - Logs détaillés des optimisations de performance
+- Tests automatisés pour validation des algorithmes
 
 ## [1.1.0] - 2024-01-15
 

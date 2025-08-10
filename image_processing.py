@@ -59,6 +59,15 @@ class ImageProcessor:
             'grey_edge_sigma': 1,
             'grey_edge_max_adjustment': 2.0,
             
+            # UDCP (Underwater Dark Channel Prior) parameters
+            'udcp_enabled': True,
+            'udcp_omega': 0.95,           # Amount of haze to keep (0.95 = remove 95% of haze)
+            'udcp_t0': 0.1,               # Minimum transmission value
+            'udcp_window_size': 15,       # Window size for dark channel calculation
+            'udcp_guided_radius': 60,     # Radius for guided filter
+            'udcp_guided_eps': 0.001,     # Regularization parameter for guided filter
+            'udcp_enhance_contrast': 1.2, # Contrast enhancement factor
+            
             # Histogram equalization parameters
             'hist_eq_enabled': True,
             'hist_eq_clip_limit': 2.0,
@@ -68,6 +77,7 @@ class ImageProcessor:
         # Processing pipeline order
         self.pipeline_order = [
             'white_balance',
+            'udcp',
             'histogram_equalization'
         ]
         
@@ -91,6 +101,8 @@ class ImageProcessor:
         for operation in self.pipeline_order:
             if operation == 'white_balance' and self.parameters['white_balance_enabled']:
                 result = self.apply_white_balance(result)
+            elif operation == 'udcp' and self.parameters['udcp_enabled']:
+                result = self.underwater_dark_channel_prior(result)
             elif operation == 'histogram_equalization' and self.parameters['hist_eq_enabled']:
                 result = self.adaptive_histogram_equalization(result)
                 
@@ -116,6 +128,8 @@ class ImageProcessor:
         for operation in self.pipeline_order:
             if operation == 'white_balance' and self.parameters['white_balance_enabled']:
                 processed_preview = self.apply_white_balance(processed_preview)
+            elif operation == 'udcp' and self.parameters['udcp_enabled']:
+                processed_preview = self.underwater_dark_channel_prior(processed_preview)
             elif operation == 'histogram_equalization' and self.parameters['hist_eq_enabled']:
                 processed_preview = self.adaptive_histogram_equalization(processed_preview)
                 
@@ -342,6 +356,144 @@ class ImageProcessor:
                 return self.gray_world_white_balance(image)
             return image
             
+    def underwater_dark_channel_prior(self, image: np.ndarray) -> np.ndarray:
+        """
+        Apply Underwater Dark Channel Prior (UDCP) for underwater image enhancement.
+        
+        This method removes haze and improves visibility in underwater images by:
+        1. Computing the dark channel of the image
+        2. Estimating atmospheric light (background light in water)
+        3. Estimating transmission map
+        4. Recovering the scene radiance (dehazed image)
+        """
+        try:
+            # Convert to float for processing
+            img_float = image.astype(np.float32) / 255.0
+            
+            # Get parameters
+            omega = self.parameters['udcp_omega']
+            t0 = self.parameters['udcp_t0']
+            window_size = self.parameters['udcp_window_size']
+            guided_radius = self.parameters['udcp_guided_radius']
+            guided_eps = self.parameters['udcp_guided_eps']
+            enhance_contrast = self.parameters['udcp_enhance_contrast']
+            
+            # Step 1: Compute dark channel
+            dark_channel = self._compute_dark_channel(img_float, window_size)
+            
+            # Step 2: Estimate atmospheric light (background light)
+            atmospheric_light = self._estimate_atmospheric_light(img_float, dark_channel)
+            
+            # Step 3: Estimate transmission map
+            transmission = self._estimate_transmission(img_float, atmospheric_light, omega, window_size)
+            
+            # Step 4: Refine transmission using guided filter
+            transmission_refined = self._guided_filter(img_float[:, :, 0], transmission, guided_radius, guided_eps)
+            
+            # Ensure minimum transmission
+            transmission_refined = np.maximum(transmission_refined, t0)
+            
+            # Step 5: Recover scene radiance
+            recovered = np.zeros_like(img_float)
+            for i in range(3):  # For each color channel
+                recovered[:, :, i] = (img_float[:, :, i] - atmospheric_light[i]) / transmission_refined + atmospheric_light[i]
+            
+            # Clip values to valid range
+            recovered = np.clip(recovered, 0, 1)
+            
+            # Optional: Enhance contrast
+            if enhance_contrast != 1.0:
+                recovered = self._enhance_contrast(recovered, enhance_contrast)
+            
+            # Convert back to uint8
+            result = (recovered * 255).astype(np.uint8)
+            
+            return result
+            
+        except Exception as e:
+            print(f"Error in UDCP processing: {e}")
+            return image
+    
+    def _compute_dark_channel(self, image: np.ndarray, window_size: int) -> np.ndarray:
+        """Compute the dark channel of the image"""
+        # Take minimum across color channels
+        min_channel = np.min(image, axis=2)
+        
+        # Apply minimum filter with specified window size
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (window_size, window_size))
+        dark_channel = cv2.erode(min_channel, kernel)
+        
+        return dark_channel
+    
+    def _estimate_atmospheric_light(self, image: np.ndarray, dark_channel: np.ndarray) -> np.ndarray:
+        """Estimate atmospheric light from the brightest pixels in the dark channel"""
+        # Get the top 0.1% brightest pixels in dark channel
+        num_pixels = dark_channel.size
+        num_brightest = max(int(num_pixels * 0.001), 1)
+        
+        # Find indices of brightest pixels
+        flat_dark = dark_channel.flatten()
+        indices = np.argpartition(flat_dark, -num_brightest)[-num_brightest:]
+        
+        # Get atmospheric light as the mean of these brightest pixels
+        atmospheric_light = np.zeros(3)
+        flat_image = image.reshape(-1, 3)
+        
+        for i in range(3):
+            atmospheric_light[i] = np.mean(flat_image[indices, i])
+        
+        return atmospheric_light
+    
+    def _estimate_transmission(self, image: np.ndarray, atmospheric_light: np.ndarray, omega: float, window_size: int) -> np.ndarray:
+        """Estimate transmission map"""
+        # Normalize by atmospheric light
+        normalized = np.zeros_like(image)
+        for i in range(3):
+            normalized[:, :, i] = image[:, :, i] / max(atmospheric_light[i], 1e-6)
+        
+        # Compute dark channel of normalized image
+        transmission = 1 - omega * self._compute_dark_channel(normalized, window_size)
+        
+        return transmission
+    
+    def _guided_filter(self, guide: np.ndarray, input_img: np.ndarray, radius: int, eps: float) -> np.ndarray:
+        """Apply guided filter to refine the transmission map"""
+        try:
+            # Convert to float32 if needed
+            I = guide.astype(np.float32)
+            p = input_img.astype(np.float32)
+            
+            # Box filter
+            kernel = np.ones((2*radius+1, 2*radius+1), np.float32) / ((2*radius+1)**2)
+            
+            mean_I = cv2.filter2D(I, -1, kernel)
+            mean_p = cv2.filter2D(p, -1, kernel)
+            corr_Ip = cv2.filter2D(I * p, -1, kernel)
+            corr_II = cv2.filter2D(I * I, -1, kernel)
+            
+            cov_Ip = corr_Ip - mean_I * mean_p
+            var_I = corr_II - mean_I * mean_I
+            
+            a = cov_Ip / (var_I + eps)
+            b = mean_p - a * mean_I
+            
+            mean_a = cv2.filter2D(a, -1, kernel)
+            mean_b = cv2.filter2D(b, -1, kernel)
+            
+            q = mean_a * I + mean_b
+            
+            return q
+            
+        except Exception as e:
+            print(f"Error in guided filter: {e}")
+            return input_img
+    
+    def _enhance_contrast(self, image: np.ndarray, factor: float) -> np.ndarray:
+        """Enhance contrast of the image"""
+        # Simple contrast enhancement: (image - 0.5) * factor + 0.5
+        enhanced = (image - 0.5) * factor + 0.5
+        return np.clip(enhanced, 0, 1)
+            
     def adaptive_histogram_equalization(self, image: np.ndarray) -> np.ndarray:
         """
         Apply Contrast Limited Adaptive Histogram Equalization (CLAHE).
@@ -394,6 +546,18 @@ class ImageProcessor:
                     'name': f'Balance des blancs ({method_names.get(method, method)})',
                     'description': method_descriptions.get(method, 'Méthode de balance des blancs'),
                     'parameters': self._format_wb_parameters()
+                })
+                
+            elif operation == 'udcp' and self.parameters['udcp_enabled']:
+                pipeline_steps.append({
+                    'name': 'UDCP (Underwater Dark Channel Prior)',
+                    'description': 'Supprime le voile et améliore la visibilité des images sous-marines en utilisant '
+                                 'l\'hypothèse du canal sombre. Estime et retire les effets de diffusion et d\'absorption de la lumière dans l\'eau.',
+                    'parameters': f'Omega: {self.parameters["udcp_omega"]:.2f}, '
+                                f'Transmission min: {self.parameters["udcp_t0"]:.2f}, '
+                                f'Taille fenêtre: {self.parameters["udcp_window_size"]}, '
+                                f'Rayon guidé: {self.parameters["udcp_guided_radius"]}, '
+                                f'Contraste: {self.parameters["udcp_enhance_contrast"]:.1f}'
                 })
                 
             elif operation == 'histogram_equalization' and self.parameters['hist_eq_enabled']:
@@ -546,6 +710,61 @@ class ImageProcessor:
                 'max': 5.0,
                 'step': 0.1,
                 'visible_when': {'white_balance_method': 'grey_edge'}
+            },
+            
+            # UDCP (Underwater Dark Channel Prior) parameters
+            'udcp_enabled': {
+                'type': 'boolean',
+                'label': 'UDCP (Underwater Dark Channel Prior)',
+                'description': 'Active l\'amélioration des images sous-marines par suppression du voile'
+            },
+            'udcp_omega': {
+                'type': 'float',
+                'label': 'Omega (Conservation du voile)',
+                'description': 'Fraction du voile à conserver (0.95 = supprime 95% du voile)',
+                'min': 0.1,
+                'max': 1.0,
+                'step': 0.05
+            },
+            'udcp_t0': {
+                'type': 'float',
+                'label': 'Transmission minimale',
+                'description': 'Valeur minimale de transmission pour éviter les artefacts',
+                'min': 0.01,
+                'max': 0.5,
+                'step': 0.01
+            },
+            'udcp_window_size': {
+                'type': 'int',
+                'label': 'Taille de fenêtre',
+                'description': 'Taille de la fenêtre pour le calcul du canal sombre',
+                'min': 3,
+                'max': 31,
+                'step': 2
+            },
+            'udcp_guided_radius': {
+                'type': 'int',
+                'label': 'Rayon du filtre guidé',
+                'description': 'Rayon pour le filtrage guidé de la carte de transmission',
+                'min': 10,
+                'max': 100,
+                'step': 10
+            },
+            'udcp_guided_eps': {
+                'type': 'float',
+                'label': 'Epsilon du filtre guidé',
+                'description': 'Paramètre de régularisation pour le filtre guidé',
+                'min': 0.0001,
+                'max': 0.01,
+                'step': 0.0001
+            },
+            'udcp_enhance_contrast': {
+                'type': 'float',
+                'label': 'Amélioration du contraste',
+                'description': 'Facteur d\'amélioration du contraste final',
+                'min': 0.5,
+                'max': 2.0,
+                'step': 0.1
             },
             
             # Histogram equalization parameters

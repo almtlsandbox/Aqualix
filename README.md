@@ -65,12 +65,22 @@ Une application Python Tkinter pour le traitement interactif d'images et de vidÃ
 
 ### Image Processing Pipeline
 
-1. **Gray-World White Balance**
-   - Corrects color temperature assuming scene average should be neutral gray
-   - Configurable percentile calculation (more robust than mean)
-   - Adjustable maximum correction factor to prevent overcorrection
+1. **White Balance (Multiple Methods)**
+   - **Gray-World**: Corrects color temperature assuming scene average should be neutral gray
+   - **White-Patch**: Assumes brightest pixels should be white
+   - **Shades-of-Gray**: Generalization using Minkowski norm for robustness
+   - **Grey-Edge**: Uses spatial derivatives to estimate illumination
+   - Configurable parameters for each method
 
-2. **Adaptive Histogram Equalization (CLAHE)**
+2. **UDCP (Underwater Dark Channel Prior)** ðŸŒŠ
+   - **Specialized underwater enhancement**: Removes haze and improves visibility in underwater images
+   - **Dark channel computation**: Estimates atmospheric light and transmission map
+   - **Guided filter refinement**: Smooths transmission map to avoid artifacts  
+   - **Configurable parameters**: Omega (haze removal strength), minimum transmission, window size
+   - **Contrast enhancement**: Optional final contrast boost
+   - **Optimized performance**: Fast processing even for large images
+
+3. **Adaptive Histogram Equalization (CLAHE)**
    - Enhances local contrast using Contrast Limited Adaptive Histogram Equalization
    - Applied to luminance channel in LAB color space
    - Configurable clip limit and tile grid size

@@ -102,6 +102,12 @@ class LocalizationManager:
             'operation_ge': 'Balance des blancs Grey-Edge',
             'operation_ge_desc': 'Utilise les dérivées spatiales pour estimer l\'illumination de la scène.',
             
+            # UDCP method
+            'udcp_title': 'UDCP (Underwater Dark Channel Prior)',
+            'udcp_description': 'Amélioration spécialisée pour images sous-marines',
+            'operation_udcp': 'UDCP (Underwater Dark Channel Prior)',
+            'operation_udcp_desc': 'Supprime le voile et améliore la visibilité des images sous-marines en utilisant l\'hypothèse du canal sombre.',
+            
             'operation_he': 'Égalisation d\'histogramme adaptatif',
             'operation_he_desc': 'Améliore le contraste local en utilisant CLAHE (Contrast Limited Adaptive Histogram Equalization).',
             
@@ -240,6 +246,12 @@ class LocalizationManager:
             'operation_sog_desc': 'Generalization of Gray-World using Minkowski norm for better robustness.',
             'operation_ge': 'Grey-Edge White Balance',
             'operation_ge_desc': 'Uses spatial derivatives to estimate scene illumination.',
+            
+            # UDCP method
+            'udcp_title': 'UDCP (Underwater Dark Channel Prior)',
+            'udcp_description': 'Specialized enhancement for underwater images',
+            'operation_udcp': 'UDCP (Underwater Dark Channel Prior)',
+            'operation_udcp_desc': 'Removes haze and improves visibility in underwater images using dark channel hypothesis.',
             
             'operation_he': 'Adaptive Histogram Equalization',
             'operation_he_desc': 'Enhances local contrast using CLAHE (Contrast Limited Adaptive Histogram Equalization).',
