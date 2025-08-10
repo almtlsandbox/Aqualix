@@ -86,8 +86,22 @@ class LocalizationManager:
             # Operations panel
             'processing_pipeline': 'Pipeline de traitement',
             'no_operations': 'Aucune opération activée',
+            
+            # White balance methods
+            'white_balance_gray_world': 'Balance des blancs Gray-World',
+            'white_balance_white_patch': 'Balance des blancs White-Patch',
+            'white_balance_shades_of_gray': 'Balance des blancs Shades-of-Gray',
+            'white_balance_grey_edge': 'Balance des blancs Grey-Edge',
+            
             'operation_gw': 'Balance des blancs Gray-World',
             'operation_gw_desc': 'Corrige la température de couleur en assumant que la moyenne de la scène devrait être grise neutre.',
+            'operation_wp': 'Balance des blancs White-Patch',
+            'operation_wp_desc': 'Corrige la balance des blancs en assumant que les pixels les plus brillants devraient être blancs.',
+            'operation_sog': 'Balance des blancs Shades-of-Gray',
+            'operation_sog_desc': 'Généralisation de Gray-World utilisant la norme de Minkowski pour une meilleure robustesse.',
+            'operation_ge': 'Balance des blancs Grey-Edge',
+            'operation_ge_desc': 'Utilise les dérivées spatiales pour estimer l\'illumination de la scène.',
+            
             'operation_he': 'Égalisation d\'histogramme adaptatif',
             'operation_he_desc': 'Améliore le contraste local en utilisant CLAHE (Contrast Limited Adaptive Histogram Equalization).',
             
@@ -211,8 +225,22 @@ class LocalizationManager:
             # Operations panel
             'processing_pipeline': 'Processing Pipeline',
             'no_operations': 'No operations enabled',
+            
+            # White balance methods
+            'white_balance_gray_world': 'Gray-World White Balance',
+            'white_balance_white_patch': 'White-Patch White Balance',
+            'white_balance_shades_of_gray': 'Shades-of-Gray White Balance',
+            'white_balance_grey_edge': 'Grey-Edge White Balance',
+            
             'operation_gw': 'Gray-World White Balance',
             'operation_gw_desc': 'Corrects color temperature by assuming the scene average should be neutral gray.',
+            'operation_wp': 'White-Patch White Balance',
+            'operation_wp_desc': 'Corrects white balance by assuming the brightest pixels should be white.',
+            'operation_sog': 'Shades-of-Gray White Balance',
+            'operation_sog_desc': 'Generalization of Gray-World using Minkowski norm for better robustness.',
+            'operation_ge': 'Grey-Edge White Balance',
+            'operation_ge_desc': 'Uses spatial derivatives to estimate scene illumination.',
+            
             'operation_he': 'Adaptive Histogram Equalization',
             'operation_he_desc': 'Enhances local contrast using CLAHE (Contrast Limited Adaptive Histogram Equalization).',
             

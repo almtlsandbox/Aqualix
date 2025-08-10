@@ -72,6 +72,11 @@ class ParameterPanel(ttk.Frame):
                 self.create_float_widget(frame, param_name, info)
             elif info['type'] == 'int':
                 self.create_int_widget(frame, param_name, info)
+            elif info['type'] == 'choice':
+                self.create_choice_widget(frame, param_name, info)
+            
+            # Store frame reference for visibility control
+            self.param_widgets[f"{param_name}_frame"] = frame
                 
     def create_boolean_widget(self, parent, param_name: str, info: Dict[str, Any]):
         """Create a boolean parameter widget"""
@@ -144,11 +149,74 @@ class ParameterPanel(ttk.Frame):
         var.trace('w', update_label)
         
         self.param_widgets[param_name] = var
+    
+    def create_choice_widget(self, parent, param_name: str, info: Dict[str, Any]):
+        """Create a choice parameter widget (combobox)"""
+        frame = ttk.Frame(parent)
+        frame.pack(fill=tk.X, pady=2)
+        
+        current_value = self.processor.get_parameter(param_name)
+        choices = info.get('choices', [])
+        choice_values = [choice[0] for choice in choices]
+        choice_labels = [choice[1] for choice in choices]
+        
+        var = tk.StringVar(value=current_value)
+        
+        combobox = ttk.Combobox(
+            frame,
+            textvariable=var,
+            values=choice_labels,
+            state='readonly',
+            width=25
+        )
+        combobox.pack(fill=tk.X, pady=2)
+        
+        # Set initial selection
+        if current_value in choice_values:
+            index = choice_values.index(current_value)
+            combobox.set(choice_labels[index])
+        
+        def on_choice_change(*args):
+            selected_label = var.get()
+            if selected_label in choice_labels:
+                index = choice_labels.index(selected_label)
+                selected_value = choice_values[index]
+                self.on_parameter_change(param_name, selected_value)
+        
+        var.trace('w', on_choice_change)
+        self.param_widgets[param_name] = var
         
     def on_parameter_change(self, param_name: str, value: Any):
         """Handle parameter change"""
         self.processor.set_parameter(param_name, value)
+        
+        # Update parameter visibility if this is a method selection
+        if param_name == 'white_balance_method':
+            self.update_parameter_visibility()
+        
         self.update_callback()
+    
+    def update_parameter_visibility(self):
+        """Update visibility of parameters based on current settings"""
+        param_info = self.processor.get_parameter_info()
+        current_method = self.processor.get_parameter('white_balance_method')
+        
+        for param_name, info in param_info.items():
+            if 'visible_when' in info:
+                frame = self.param_widgets.get(f"{param_name}_frame")
+                if frame:
+                    condition = info['visible_when']
+                    show = True
+                    for condition_param, condition_value in condition.items():
+                        current_value = self.processor.get_parameter(condition_param)
+                        if current_value != condition_value:
+                            show = False
+                            break
+                    
+                    if show:
+                        frame.pack(fill=tk.X, padx=5, pady=2)
+                    else:
+                        frame.pack_forget()
         
     def refresh_ui(self):
         """Refresh UI texts after language change"""
