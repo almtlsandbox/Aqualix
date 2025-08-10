@@ -9,6 +9,7 @@ import numpy as np
 from PIL import Image, ImageTk
 from typing import Dict, Any, List, Callable, Union, Optional
 from image_info import ImageInfoExtractor
+from localization import t
 
 class ParameterPanel(ttk.Frame):
     """Panel for adjusting processing parameters"""
@@ -235,7 +236,7 @@ class InteractivePreviewPanel(ttk.Frame):
         controls_frame.pack(fill=tk.X, pady=(0, 5))
         
         # Split position slider
-        ttk.Label(controls_frame, text="Division:").pack(side=tk.LEFT)
+        ttk.Label(controls_frame, text=t('split_position') + ':').pack(side=tk.LEFT)
         self.split_var = tk.DoubleVar(value=0.5)
         self.split_slider = ttk.Scale(
             controls_frame,
@@ -248,16 +249,16 @@ class InteractivePreviewPanel(ttk.Frame):
         self.split_slider.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 10))
         
         # Zoom controls
-        ttk.Label(controls_frame, text="Zoom:").pack(side=tk.LEFT)
+        ttk.Label(controls_frame, text=t('zoom') + ':').pack(side=tk.LEFT)
         ttk.Button(controls_frame, text="-", width=3, command=self.zoom_out).pack(side=tk.LEFT, padx=(5, 2))
         ttk.Button(controls_frame, text="+", width=3, command=self.zoom_in).pack(side=tk.LEFT, padx=(2, 10))
         
         # View control buttons
-        ttk.Button(controls_frame, text="Ajuster", command=self.fit_to_canvas).pack(side=tk.LEFT, padx=(10, 5))
-        ttk.Button(controls_frame, text="1:1", command=self.reset_view).pack(side=tk.LEFT, padx=(5, 5))
+        ttk.Button(controls_frame, text=t('fit_image'), command=self.fit_to_canvas).pack(side=tk.LEFT, padx=(10, 5))
+        ttk.Button(controls_frame, text=t('reset_view'), command=self.reset_view).pack(side=tk.LEFT, padx=(5, 5))
         
         # Rotation controls
-        ttk.Label(controls_frame, text="Rotation:").pack(side=tk.LEFT, padx=(10, 5))
+        ttk.Label(controls_frame, text=t('rotation') + ':').pack(side=tk.LEFT, padx=(10, 5))
         ttk.Button(controls_frame, text="↺", width=3, command=self.rotate_left).pack(side=tk.LEFT, padx=(2, 2))
         ttk.Button(controls_frame, text="↻", width=3, command=self.rotate_right).pack(side=tk.LEFT, padx=(2, 5))
         

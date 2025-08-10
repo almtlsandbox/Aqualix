@@ -16,11 +16,13 @@ from pathlib import Path
 from image_processing import ImageProcessor
 from ui_components import ParameterPanel, PipelinePanel, InteractivePreviewPanel, ImageInfoPanel
 from logger import AqualixLogger
+from localization import get_localization_manager, t
 
 class ImageVideoProcessorApp:
     def __init__(self, root):
         self.root = root
-        self.root.title("Image and Video Processor")
+        self.localization_manager = get_localization_manager()
+        self.root.title(t('app_title'))
         self.root.geometry("1200x800")
         
         # Initialize variables
@@ -50,7 +52,7 @@ class ImageVideoProcessorApp:
         main_frame = ttk.Frame(self.root)
         main_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
         
-        # Top toolbar
+        # Top toolbar with language selector
         self.create_toolbar(main_frame)
         
         # Main content area
@@ -67,7 +69,7 @@ class ImageVideoProcessorApp:
         
         # Parameters tab
         params_frame = ttk.Frame(self.notebook)
-        self.notebook.add(params_frame, text="Paramètres")
+        self.notebook.add(params_frame, text=t('tab_parameters'))
         
         # Parameter panel
         self.param_panel = ParameterPanel(params_frame, self.processor, self.update_preview)
@@ -75,7 +77,7 @@ class ImageVideoProcessorApp:
         
         # Pipeline tab
         pipeline_frame = ttk.Frame(self.notebook)
-        self.notebook.add(pipeline_frame, text="Opérations")
+        self.notebook.add(pipeline_frame, text=t('tab_operations'))
         
         # Pipeline panel
         self.pipeline_panel = PipelinePanel(pipeline_frame)
@@ -83,7 +85,7 @@ class ImageVideoProcessorApp:
         
         # Image info tab
         info_frame = ttk.Frame(self.notebook)
-        self.notebook.add(info_frame, text="Informations")
+        self.notebook.add(info_frame, text=t('tab_info'))
         
         # Image info panel
         self.info_panel = ImageInfoPanel(info_frame)
@@ -106,19 +108,35 @@ class ImageVideoProcessorApp:
         toolbar.pack(fill=tk.X, pady=(0, 5))
         
         # File operations
-        ttk.Button(toolbar, text="Select File", command=self.select_file).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(toolbar, text="Select Folder", command=self.select_folder).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(toolbar, text=t('select_file'), command=self.select_file).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(toolbar, text=t('select_folder'), command=self.select_folder).pack(side=tk.LEFT, padx=(0, 5))
         
         # Navigation
-        ttk.Button(toolbar, text="Previous", command=self.previous_file).pack(side=tk.LEFT, padx=(10, 2))
-        ttk.Button(toolbar, text="Next", command=self.next_file).pack(side=tk.LEFT, padx=(2, 5))
+        ttk.Button(toolbar, text=t('previous'), command=self.previous_file).pack(side=tk.LEFT, padx=(10, 2))
+        ttk.Button(toolbar, text=t('next'), command=self.next_file).pack(side=tk.LEFT, padx=(2, 5))
         
         # File info
-        self.file_info_label = ttk.Label(toolbar, text="No file selected")
+        self.file_info_label = ttk.Label(toolbar, text=t('no_files'))
         self.file_info_label.pack(side=tk.LEFT, padx=(10, 0))
         
+        # Language selector (right side)
+        lang_frame = ttk.Frame(toolbar)
+        lang_frame.pack(side=tk.RIGHT, padx=(5, 10))
+        
+        ttk.Label(lang_frame, text=t('language') + ':').pack(side=tk.LEFT, padx=(0, 5))
+        self.language_var = tk.StringVar(value=self.localization_manager.get_language())
+        self.language_combo = ttk.Combobox(
+            lang_frame, 
+            textvariable=self.language_var, 
+            values=['fr', 'en'], 
+            state='readonly',
+            width=8
+        )
+        self.language_combo.pack(side=tk.LEFT, padx=(0, 10))
+        self.language_combo.bind('<<ComboboxSelected>>', self.on_language_change)
+        
         # Save button
-        ttk.Button(toolbar, text="Save Result", command=self.save_result).pack(side=tk.RIGHT)
+        ttk.Button(toolbar, text=t('save_result'), command=self.save_result).pack(side=tk.RIGHT)
         
     def create_video_controls(self, parent):
         """Create video-specific controls"""
@@ -430,6 +448,49 @@ class ImageVideoProcessorApp:
         """Cleanup resources"""
         if self.video_capture:
             self.video_capture.release()
+            
+    def on_language_change(self, event):
+        """Handle language change"""
+        new_language = self.language_var.get()
+        self.localization_manager.set_language(new_language)
+        self.refresh_ui()
+        
+    def refresh_ui(self):
+        """Refresh the UI with new language"""
+        # Update window title
+        self.root.title(t('app_title'))
+        
+        # Update tab names
+        self.notebook.tab(0, text=t('tab_parameters'))
+        self.notebook.tab(1, text=t('tab_operations'))
+        self.notebook.tab(2, text=t('tab_info'))
+        
+        # Recreate the toolbar to update button texts
+        for widget in self.root.winfo_children():
+            if isinstance(widget, ttk.Frame):
+                for child in widget.winfo_children():
+                    if hasattr(child, 'pack_info') and child.pack_info().get('side') != 'bottom':
+                        # This is likely the toolbar frame
+                        child.destroy()
+                        self.create_toolbar(widget)
+                        break
+                break
+        
+        # Update parameter panel
+        # if hasattr(self, 'param_panel'):
+        #     self.param_panel.refresh_ui()
+            
+        # Update pipeline panel  
+        # if hasattr(self, 'pipeline_panel'):
+        #     self.pipeline_panel.refresh_ui()
+            
+        # Update info panel
+        # if hasattr(self, 'info_panel'):
+        #     self.info_panel.refresh_ui()
+            
+        # Update preview panel
+        # if hasattr(self, 'preview_panel'):
+        #     self.preview_panel.refresh_ui()
 
 def main():
     root = tk.Tk()
