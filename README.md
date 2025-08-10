@@ -123,9 +123,11 @@ Une application Python Tkinter pour le traitement interactif d'images et de vid�
    - **Vue divisée** : Avant (gauche) et après (droite)
    - **Ajuster la division** : Glisser la ligne blanche ou utiliser le slider
    - **Zoom** : Molette de souris ou boutons +/-
+   - **Ajustement automatique** : Nouvelles images adaptées automatiquement au canvas
+   - **Ajuster** : Bouton pour adapter l'image au canvas manuellement
+   - **1:1** : Bouton pour affichage à l'échelle réelle (remplace "Réinitialiser")
    - **Panoramique** : Clic gauche + glisser
    - **Rotation** : Boutons ↺ ↻ (90°)
-   - **Réinitialiser** : Retour aux valeurs par défaut
 
 6. **Sauvegarder** :
    - Clic sur "Sauvegarder le résultat" pour exporter

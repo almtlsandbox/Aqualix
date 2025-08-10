@@ -25,13 +25,21 @@ et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
   - Analyses avancées (histogramme de couleurs, statistiques)
   - Données EXIF complètes (caméra, paramètres, géolocalisation si disponible)
 
+- **Contrôles de vue améliorés** :
+  - Bouton "Ajuster" pour adapter automatiquement l'image au canvas
+  - Ajustement automatique des nouvelles images au chargement
+  - Renommage du bouton "Réinitialiser" en "1:1" pour plus de clarté
+
 ### Modifié
 - Interface utilisateur reorganisée en trois onglets : Paramètres, Opérations, Informations
+- Amélioration de l'expérience utilisateur avec ajustement automatique d'image
 - Amélioration de la gestion des erreurs et de la stabilité
 
 ### Corrigé
 - Fix des références à la progress bar lors de la fermeture de fenêtre
+- Correction des erreurs de comparaison de types dans le système d'informations
 - Amélioration de la gestion mémoire lors du traitement vidéo
+- Gestion robuste des erreurs de formatage des métadonnées
 
 ## [1.0.0] - 2025-08-10
 
