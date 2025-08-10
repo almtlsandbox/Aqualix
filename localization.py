@@ -86,6 +86,7 @@ class LocalizationManager:
             # Operations panel
             'processing_pipeline': 'Pipeline de traitement',
             'no_operations': 'Aucune opération activée',
+            'no_operations_desc': 'Toutes les étapes de traitement sont désactivées.',
             
             # White balance methods
             'white_balance_gray_world': 'Balance des blancs Gray-World',
@@ -104,6 +105,14 @@ class LocalizationManager:
             'operation_ge_desc': 'Utilise les dérivées spatiales pour estimer l\'illumination de la scène.',
             'operation_lgw': 'Balance des blancs Eau Verte (Lac)',
             'operation_lgw_desc': 'Spécialisé pour les eaux vertes de lac avec réduction ciblée du vert et compensation magenta.',
+            
+            # Processing step titles
+            'white_balance_step_title': 'Balance des blancs',
+            'white_balance_step_desc': 'Correction de la température de couleur',
+            'udcp_step_title': 'UDCP (Underwater Dark Channel Prior)',
+            'udcp_step_desc': 'Amélioration spécialisée pour images sous-marines',
+            'histogram_equalization_step_title': 'Égalisation d\'histogramme (CLAHE)',
+            'histogram_equalization_step_desc': 'Amélioration du contraste local',
             
             # UDCP method
             'udcp_title': 'UDCP (Underwater Dark Channel Prior)',
@@ -234,6 +243,7 @@ class LocalizationManager:
             # Operations panel
             'processing_pipeline': 'Processing Pipeline',
             'no_operations': 'No operations enabled',
+            'no_operations_desc': 'All processing steps are disabled.',
             
             # White balance methods
             'white_balance_gray_world': 'Gray-World White Balance',
@@ -252,6 +262,14 @@ class LocalizationManager:
             'operation_ge_desc': 'Uses spatial derivatives to estimate scene illumination.',
             'operation_lgw': 'Lake Green Water White Balance',
             'operation_lgw_desc': 'Specialized for green lake water with targeted green reduction and magenta compensation.',
+            
+            # Processing step titles
+            'white_balance_step_title': 'White Balance',
+            'white_balance_step_desc': 'Color temperature correction',
+            'udcp_step_title': 'UDCP (Underwater Dark Channel Prior)',
+            'udcp_step_desc': 'Specialized enhancement for underwater images',
+            'histogram_equalization_step_title': 'Histogram Equalization (CLAHE)',
+            'histogram_equalization_step_desc': 'Local contrast enhancement',
             
             # UDCP method
             'udcp_title': 'UDCP (Underwater Dark Channel Prior)',

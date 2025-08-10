@@ -68,8 +68,8 @@ class ParameterPanel(ttk.Frame):
         # Define step configurations
         step_configs = {
             'white_balance': {
-                'title': 'Balance des blancs',
-                'description': 'Correction de la température de couleur',
+                'title': t('white_balance_step_title'),
+                'description': t('white_balance_step_desc'),
                 'enable_param': 'white_balance_enabled',
                 'method_param': 'white_balance_method',
                 'parameters': [
@@ -82,8 +82,8 @@ class ParameterPanel(ttk.Frame):
                 ]
             },
             'udcp': {
-                'title': 'UDCP (Underwater Dark Channel Prior)',
-                'description': 'Amélioration spécialisée pour images sous-marines',
+                'title': t('udcp_step_title'),
+                'description': t('udcp_step_desc'),
                 'enable_param': 'udcp_enabled',
                 'parameters': [
                     'udcp_omega', 'udcp_t0', 'udcp_window_size',
@@ -91,8 +91,8 @@ class ParameterPanel(ttk.Frame):
                 ]
             },
             'histogram_equalization': {
-                'title': 'Égalisation d\'histogramme (CLAHE)',
-                'description': 'Amélioration du contraste local',
+                'title': t('histogram_equalization_step_title'),
+                'description': t('histogram_equalization_step_desc'),
                 'enable_param': 'hist_eq_enabled',
                 'parameters': [
                     'hist_eq_clip_limit', 'hist_eq_tile_grid_size'

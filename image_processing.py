@@ -6,6 +6,7 @@ Contains image processing algorithms and pipeline management.
 import cv2
 import numpy as np
 from typing import Dict, Any, List, Tuple
+from localization import t
 
 def create_preview_image(image: np.ndarray, max_size: int = 1024) -> Tuple[np.ndarray, float]:
     """
@@ -625,29 +626,30 @@ class ImageProcessor:
                 method = self.parameters['white_balance_method']
                 method_names = {
                     'gray_world': 'Gray-World',
-                    'white_patch': 'White-Patch',
+                    'white_patch': 'White-Patch', 
                     'shades_of_gray': 'Shades-of-Gray',
-                    'grey_edge': 'Grey-Edge'
+                    'grey_edge': 'Grey-Edge',
+                    'lake_green_water': t('white_balance_lake_green_water')
                 }
                 
                 method_descriptions = {
-                    'gray_world': 'Corrige la température couleur en supposant que la moyenne de la scène doit être gris neutre.',
-                    'white_patch': 'Corrige la balance des blancs en supposant que les pixels les plus brillants doivent être blancs.',
-                    'shades_of_gray': 'Généralisation de Gray-World utilisant la norme de Minkowski pour une meilleure robustesse.',
-                    'grey_edge': 'Utilise les dérivées spatiales pour estimer l\'illumination de la scène.'
+                    'gray_world': t('operation_gw_desc'),
+                    'white_patch': t('operation_wp_desc'),
+                    'shades_of_gray': t('operation_sog_desc'),
+                    'grey_edge': t('operation_ge_desc'),
+                    'lake_green_water': t('operation_lgw_desc')
                 }
                 
                 pipeline_steps.append({
-                    'name': f'Balance des blancs ({method_names.get(method, method)})',
-                    'description': method_descriptions.get(method, 'Méthode de balance des blancs'),
+                    'name': f'{t("white_balance_step_title")} ({method_names.get(method, method)})',
+                    'description': method_descriptions.get(method, t('white_balance_step_desc')),
                     'parameters': self._format_wb_parameters()
                 })
                 
             elif operation == 'udcp' and self.parameters['udcp_enabled']:
                 pipeline_steps.append({
-                    'name': 'UDCP (Underwater Dark Channel Prior)',
-                    'description': 'Supprime le voile et améliore la visibilité des images sous-marines en utilisant '
-                                 'l\'hypothèse du canal sombre. Estime et retire les effets de diffusion et d\'absorption de la lumière dans l\'eau.',
+                    'name': t('udcp_step_title'),
+                    'description': t('operation_udcp_desc'),
                     'parameters': f'Omega: {self.parameters["udcp_omega"]:.2f}, '
                                 f'Transmission min: {self.parameters["udcp_t0"]:.2f}, '
                                 f'Taille fenêtre: {self.parameters["udcp_window_size"]}, '
@@ -657,17 +659,16 @@ class ImageProcessor:
                 
             elif operation == 'histogram_equalization' and self.parameters['hist_eq_enabled']:
                 pipeline_steps.append({
-                    'name': 'Égalisation adaptative d\'histogramme',
-                    'description': f'Améliore le contraste local en utilisant CLAHE (Contrast Limited Adaptive Histogram Equalization). '
-                                 f'Appliqué au canal de luminance dans l\'espace colorimétrique LAB.',
+                    'name': t('histogram_equalization_step_title'),
+                    'description': t('operation_he_desc'),
                     'parameters': f'Limite de coupure: {self.parameters["hist_eq_clip_limit"]}, '
                                 f'Taille des tuiles: {self.parameters["hist_eq_tile_grid_size"]}x{self.parameters["hist_eq_tile_grid_size"]}'
                 })
                 
         if not pipeline_steps:
             pipeline_steps.append({
-                'name': 'Aucun traitement',
-                'description': 'Toutes les étapes de traitement sont désactivées.',
+                'name': t('no_operations'),
+                'description': t('no_operations_desc'),
                 'parameters': 'N/A'
             })
             
