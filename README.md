@@ -1,6 +1,12 @@
-# Image and Video Processing Application
+# Aqualix - Traitement d'Images et Vidéos
 
-A Python Tkinter-based GUI application for processing images and videos with various filters and corrections.
+[![GitHub](https://img.shields.io/github/license/almtlsandbox/Aqualix)](https://github.com/almtlsandbox/Aqualix/blob/main/LICENSE)
+[![Python](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![OpenCV](https://img.shields.io/badge/opencv-4.8+-green.svg)](https://opencv.org/)
+
+Une application Python Tkinter pour le traitement interactif d'images et de vidéos avec une interface utilisateur intuitive et des fonctionnalités avancées de visualisation.
+
+![Aqualix Interface](https://img.shields.io/badge/Interface-Fran%C3%A7ais-blue)
 
 ## Features
 
@@ -43,9 +49,24 @@ A Python Tkinter-based GUI application for processing images and videos with var
 
 ## Installation
 
-1. **Clone or download** this repository
-2. **Install Python** (3.8 or higher recommended)
-3. **Install dependencies**:
+1. **Clonez le repository** :
+   ```bash
+   git clone https://github.com/almtlsandbox/Aqualix.git
+   cd Aqualix
+   ```
+
+2. **Installez Python** (3.8 ou plus récent recommandé)
+
+3. **Créez un environnement virtuel** (recommandé) :
+   ```bash
+   python -m venv .venv
+   # Sur Windows:
+   .venv\Scripts\activate
+   # Sur macOS/Linux:
+   source .venv/bin/activate
+   ```
+
+4. **Installez les dépendances** :
    ```bash
    pip install -r requirements.txt
    ```
@@ -159,6 +180,26 @@ def gaussian_blur(self, image):
 - 4GB+ RAM recommended for video processing
 - OpenCV-compatible video codecs for video support
 
-## License
+## Contribuer
 
-This project is open source. Feel free to modify and distribute according to your needs.
+Les contributions sont les bienvenues ! N'hésitez pas à :
+
+1. Fork le projet
+2. Créer une branche pour votre fonctionnalité (`git checkout -b feature/AmazingFeature`)
+3. Commiter vos changements (`git commit -m 'Add some AmazingFeature'`)
+4. Push vers la branche (`git push origin feature/AmazingFeature`)
+5. Ouvrir une Pull Request
+
+## Licence
+
+Ce projet est sous licence MIT. Voir le fichier [LICENSE](LICENSE) pour plus de détails.
+
+## Remerciements
+
+- [OpenCV](https://opencv.org/) pour les algorithmes de traitement d'image
+- [Pillow](https://python-pillow.org/) pour la manipulation d'images
+- [Tkinter](https://docs.python.org/3/library/tkinter.html) pour l'interface utilisateur
+
+## Support
+
+Pour toute question ou problème, n'hésitez pas à ouvrir une [issue](https://github.com/almtlsandbox/Aqualix/issues) sur GitHub.
