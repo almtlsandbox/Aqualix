@@ -74,6 +74,14 @@ class ImageProcessor:
             'udcp_guided_eps': 0.001,     # Regularization parameter for guided filter
             'udcp_enhance_contrast': 1.2, # Contrast enhancement factor
             
+            # Beer-Lambert correction parameters
+            'beer_lambert_enabled': True,
+            'beer_lambert_depth_factor': 0.1,      # Depth attenuation factor (0.01-1.0)
+            'beer_lambert_red_coeff': 0.6,         # Red attenuation coefficient (0.1-2.0)
+            'beer_lambert_green_coeff': 0.3,       # Green attenuation coefficient (0.1-1.5)
+            'beer_lambert_blue_coeff': 0.1,        # Blue attenuation coefficient (0.05-1.0)
+            'beer_lambert_enhance_factor': 1.5,    # Enhancement factor (1.0-3.0)
+            
             # Histogram equalization parameters
             'hist_eq_enabled': True,
             'hist_eq_clip_limit': 2.0,
@@ -84,6 +92,7 @@ class ImageProcessor:
         self.pipeline_order = [
             'white_balance',
             'udcp',
+            'beer_lambert',
             'histogram_equalization'
         ]
         
@@ -109,6 +118,8 @@ class ImageProcessor:
                 result = self.apply_white_balance(result)
             elif operation == 'udcp' and self.parameters['udcp_enabled']:
                 result = self.underwater_dark_channel_prior(result)
+            elif operation == 'beer_lambert' and self.parameters['beer_lambert_enabled']:
+                result = self.beer_lambert_correction(result)
             elif operation == 'histogram_equalization' and self.parameters['hist_eq_enabled']:
                 result = self.adaptive_histogram_equalization(result)
                 
@@ -136,6 +147,8 @@ class ImageProcessor:
                 processed_preview = self.apply_white_balance(processed_preview)
             elif operation == 'udcp' and self.parameters['udcp_enabled']:
                 processed_preview = self.underwater_dark_channel_prior(processed_preview)
+            elif operation == 'beer_lambert' and self.parameters['beer_lambert_enabled']:
+                processed_preview = self.beer_lambert_correction(processed_preview)
             elif operation == 'histogram_equalization' and self.parameters['hist_eq_enabled']:
                 processed_preview = self.adaptive_histogram_equalization(processed_preview)
                 
@@ -589,6 +602,77 @@ class ImageProcessor:
         # Simple contrast enhancement: (image - 0.5) * factor + 0.5
         enhanced = (image - 0.5) * factor + 0.5
         return np.clip(enhanced, 0, 1)
+    
+    def beer_lambert_correction(self, image: np.ndarray) -> np.ndarray:
+        """
+        Apply Beer-Lambert law correction for underwater images.
+        
+        Beer-Lambert law describes the attenuation of light through water:
+        I = I0 * exp(-k * d)
+        where I0 is incident light, k is attenuation coefficient, d is distance
+        
+        This correction compensates for depth-dependent color loss in underwater photography.
+        
+        Returns:
+            np.ndarray: Color-corrected image
+        """
+        try:
+            # Get parameters
+            depth_factor = self.parameters['beer_lambert_depth_factor']
+            red_coeff = self.parameters['beer_lambert_red_coeff']
+            green_coeff = self.parameters['beer_lambert_green_coeff']
+            blue_coeff = self.parameters['beer_lambert_blue_coeff']
+            enhance_factor = self.parameters['beer_lambert_enhance_factor']
+            
+            # Convert to float
+            img_float = image.astype(np.float32) / 255.0
+            height, width = img_float.shape[:2]
+            
+            # Create depth map estimation based on image brightness
+            # Darker regions are assumed to be further/deeper
+            gray = cv2.cvtColor(img_float, cv2.COLOR_BGR2GRAY)
+            
+            # Invert brightness to create depth approximation
+            # Brighter areas = shallower, darker areas = deeper
+            depth_map = 1.0 - gray
+            depth_map = depth_map * depth_factor
+            
+            # Apply Beer-Lambert correction for each channel
+            b_channel, g_channel, r_channel = cv2.split(img_float)
+            
+            # Calculate compensation factors based on attenuation coefficients
+            # Higher attenuation coefficient = more correction needed
+            r_compensation = np.exp(red_coeff * depth_map)
+            g_compensation = np.exp(green_coeff * depth_map)
+            b_compensation = np.exp(blue_coeff * depth_map)
+            
+            # Apply compensation (inverse of Beer-Lambert attenuation)
+            r_corrected = r_channel * r_compensation
+            g_corrected = g_channel * g_compensation
+            b_corrected = b_channel * b_compensation
+            
+            # Combine channels
+            corrected_image = cv2.merge([b_corrected, g_corrected, r_corrected])
+            
+            # Apply enhancement factor
+            if enhance_factor != 1.0:
+                corrected_image = corrected_image * enhance_factor
+            
+            # Normalize to prevent oversaturation while preserving dynamic range
+            # Adaptive normalization per channel
+            for i in range(3):
+                channel = corrected_image[:, :, i]
+                max_val = np.percentile(channel, 99)  # Use 99th percentile to avoid outliers
+                if max_val > 1.0:
+                    corrected_image[:, :, i] = channel / max_val
+            
+            # Convert back to uint8
+            result = np.clip(corrected_image * 255.0, 0, 255).astype(np.uint8)
+            return result
+            
+        except Exception as e:
+            print(f"Error in Beer-Lambert correction: {e}")
+            return image
             
     def adaptive_histogram_equalization(self, image: np.ndarray) -> np.ndarray:
         """
@@ -657,6 +741,17 @@ class ImageProcessor:
                                 f'Contraste: {self.parameters["udcp_enhance_contrast"]:.1f}'
                 })
                 
+            elif operation == 'beer_lambert' and self.parameters['beer_lambert_enabled']:
+                pipeline_steps.append({
+                    'name': t('beer_lambert_step_title'),
+                    'description': t('operation_beer_lambert_desc'),
+                    'parameters': f'Facteur profondeur: {self.parameters["beer_lambert_depth_factor"]:.2f}, '
+                                f'Coeff. rouge: {self.parameters["beer_lambert_red_coeff"]:.2f}, '
+                                f'Coeff. vert: {self.parameters["beer_lambert_green_coeff"]:.2f}, '
+                                f'Coeff. bleu: {self.parameters["beer_lambert_blue_coeff"]:.2f}, '
+                                f'Enhancement: {self.parameters["beer_lambert_enhance_factor"]:.1f}'
+                })
+                
             elif operation == 'histogram_equalization' and self.parameters['hist_eq_enabled']:
                 pipeline_steps.append({
                     'name': t('histogram_equalization_step_title'),
@@ -697,8 +792,8 @@ class ImageProcessor:
             # White balance method selection
             'white_balance_method': {
                 'type': 'choice',
-                'label': 'Méthode de balance des blancs',
-                'description': 'Choisir la méthode de correction de la balance des blancs',
+                'label': t('param_white_balance_method_label'),
+                'description': t('param_white_balance_method_desc'),
                 'choices': [
                     ('gray_world', 'Gray-World'),
                     ('white_patch', 'White-Patch'),
@@ -709,15 +804,15 @@ class ImageProcessor:
             },
             'white_balance_enabled': {
                 'type': 'boolean',
-                'label': 'Activer la balance des blancs',
-                'description': 'Active ou désactive la correction de la balance des blancs'
+                'label': t('param_white_balance_enabled_label'),
+                'description': t('param_white_balance_enabled_desc')
             },
             
             # Gray-world parameters
             'gray_world_percentile': {
                 'type': 'float',
-                'label': 'Percentile Gray-World',
-                'description': 'Percentile utilisé pour calculer les moyennes des canaux (plus robuste que la moyenne)',
+                'label': t('param_gray_world_percentile_label'),
+                'description': t('param_gray_world_percentile_desc'),
                 'min': 10,
                 'max': 90,
                 'step': 5,
@@ -725,8 +820,8 @@ class ImageProcessor:
             },
             'gray_world_max_adjustment': {
                 'type': 'float',
-                'label': 'Facteur d\'ajustement max (Gray-World)',
-                'description': 'Facteur maximum d\'échelle autorisé pour les canaux couleur',
+                'label': t('param_gray_world_max_adjustment_label'),
+                'description': t('param_gray_world_max_adjustment_desc'),
                 'min': 1.0,
                 'max': 5.0,
                 'step': 0.1,
@@ -736,8 +831,8 @@ class ImageProcessor:
             # White-patch parameters
             'white_patch_percentile': {
                 'type': 'float',
-                'label': 'Percentile White-Patch',
-                'description': 'Percentile des pixels les plus brillants considérés comme blancs',
+                'label': t('param_white_patch_percentile_label'),
+                'description': t('param_white_patch_percentile_desc'),
                 'min': 90,
                 'max': 99.9,
                 'step': 0.5,
@@ -745,8 +840,8 @@ class ImageProcessor:
             },
             'white_patch_max_adjustment': {
                 'type': 'float',
-                'label': 'Facteur d\'ajustement max (White-Patch)',
-                'description': 'Facteur maximum d\'échelle autorisé pour les canaux couleur',
+                'label': t('param_white_patch_max_adjustment_label'),
+                'description': t('param_white_patch_max_adjustment_desc'),
                 'min': 1.0,
                 'max': 5.0,
                 'step': 0.1,
@@ -756,8 +851,8 @@ class ImageProcessor:
             # Shades-of-gray parameters
             'shades_of_gray_norm': {
                 'type': 'int',
-                'label': 'Norme Shades-of-Gray',
-                'description': 'Ordre de la norme de Minkowski (1=moyenne, 2=euclidienne, inf=max)',
+                'label': t('param_shades_of_gray_norm_label'),
+                'description': t('param_shades_of_gray_norm_desc'),
                 'min': 1,
                 'max': 10,
                 'step': 1,
@@ -765,8 +860,8 @@ class ImageProcessor:
             },
             'shades_of_gray_percentile': {
                 'type': 'float',
-                'label': 'Percentile Shades-of-Gray',
-                'description': 'Percentile utilisé si applicable',
+                'label': t('param_shades_of_gray_percentile_label'),
+                'description': t('param_shades_of_gray_percentile_desc'),
                 'min': 10,
                 'max': 90,
                 'step': 5,
@@ -774,8 +869,8 @@ class ImageProcessor:
             },
             'shades_of_gray_max_adjustment': {
                 'type': 'float',
-                'label': 'Facteur d\'ajustement max (Shades-of-Gray)',
-                'description': 'Facteur maximum d\'échelle autorisé pour les canaux couleur',
+                'label': t('param_shades_of_gray_max_adjustment_label'),
+                'description': t('param_shades_of_gray_max_adjustment_desc'),
                 'min': 1.0,
                 'max': 5.0,
                 'step': 0.1,
@@ -785,8 +880,8 @@ class ImageProcessor:
             # Grey-edge parameters
             'grey_edge_norm': {
                 'type': 'int',
-                'label': 'Norme Grey-Edge',
-                'description': 'Ordre de la norme pour les dérivées (1=manhattan, 2=euclidienne)',
+                'label': t('param_grey_edge_norm_label'),
+                'description': t('param_grey_edge_norm_desc'),
                 'min': 1,
                 'max': 10,
                 'step': 1,
@@ -794,8 +889,8 @@ class ImageProcessor:
             },
             'grey_edge_sigma': {
                 'type': 'float',
-                'label': 'Sigma Grey-Edge',
-                'description': 'Paramètre de lissage gaussien (0=pas de lissage)',
+                'label': t('param_grey_edge_sigma_label'),
+                'description': t('param_grey_edge_sigma_desc'),
                 'min': 0.0,
                 'max': 3.0,
                 'step': 0.1,
@@ -803,8 +898,8 @@ class ImageProcessor:
             },
             'grey_edge_max_adjustment': {
                 'type': 'float',
-                'label': 'Facteur d\'ajustement max (Grey-Edge)',
-                'description': 'Facteur maximum d\'échelle autorisé pour les canaux couleur',
+                'label': t('param_grey_edge_max_adjustment_label'),
+                'description': t('param_grey_edge_max_adjustment_desc'),
                 'min': 1.0,
                 'max': 5.0,
                 'step': 0.1,
@@ -814,8 +909,8 @@ class ImageProcessor:
             # Lake Green Water white balance parameters
             'lake_green_reduction': {
                 'type': 'float',
-                'label': 'Réduction du vert',
-                'description': 'Intensité de la réduction du canal vert (0.0 = aucune, 1.0 = maximum)',
+                'label': t('param_lake_green_reduction_label'),
+                'description': t('param_lake_green_reduction_desc'),
                 'min': 0.0,
                 'max': 1.0,
                 'step': 0.05,
@@ -823,8 +918,8 @@ class ImageProcessor:
             },
             'lake_magenta_strength': {
                 'type': 'float',
-                'label': 'Force magenta',
-                'description': 'Intensité de la compensation magenta (rouge+bleu vs vert)',
+                'label': t('param_lake_magenta_strength_label'),
+                'description': t('param_lake_magenta_strength_desc'),
                 'min': 0.0,
                 'max': 0.5,
                 'step': 0.02,
@@ -832,8 +927,8 @@ class ImageProcessor:
             },
             'lake_gray_world_influence': {
                 'type': 'float',
-                'label': 'Influence Gray-World',
-                'description': 'Influence de la correction Gray-World finale (0.0 = aucune, 1.0 = maximum)',
+                'label': t('param_lake_gray_world_influence_label'),
+                'description': t('param_lake_gray_world_influence_desc'),
                 'min': 0.0,
                 'max': 1.0,
                 'step': 0.1,
@@ -843,76 +938,123 @@ class ImageProcessor:
             # UDCP (Underwater Dark Channel Prior) parameters
             'udcp_enabled': {
                 'type': 'boolean',
-                'label': 'UDCP (Underwater Dark Channel Prior)',
-                'description': 'Active l\'amélioration des images sous-marines par suppression du voile'
+                'label': t('param_udcp_enabled_label'),
+                'description': t('param_udcp_enabled_desc')
             },
             'udcp_omega': {
                 'type': 'float',
-                'label': 'Omega (Conservation du voile)',
-                'description': 'Fraction du voile à conserver (0.95 = supprime 95% du voile)',
+                'label': t('param_udcp_omega_label'),
+                'description': t('param_udcp_omega_desc'),
                 'min': 0.1,
                 'max': 1.0,
                 'step': 0.05
             },
             'udcp_t0': {
                 'type': 'float',
-                'label': 'Transmission minimale',
-                'description': 'Valeur minimale de transmission pour éviter les artefacts',
+                'label': t('param_udcp_t0_label'),
+                'description': t('param_udcp_t0_desc'),
                 'min': 0.01,
                 'max': 0.5,
                 'step': 0.01
             },
             'udcp_window_size': {
                 'type': 'int',
-                'label': 'Taille de fenêtre',
-                'description': 'Taille de la fenêtre pour le calcul du canal sombre',
+                'label': t('param_udcp_window_size_label'),
+                'description': t('param_udcp_window_size_desc'),
                 'min': 3,
                 'max': 31,
                 'step': 2
             },
             'udcp_guided_radius': {
                 'type': 'int',
-                'label': 'Rayon du filtre guidé',
-                'description': 'Rayon pour le filtrage guidé de la carte de transmission',
+                'label': t('param_udcp_guided_radius_label'),
+                'description': t('param_udcp_guided_radius_desc'),
                 'min': 10,
                 'max': 100,
                 'step': 10
             },
             'udcp_guided_eps': {
                 'type': 'float',
-                'label': 'Epsilon du filtre guidé',
-                'description': 'Paramètre de régularisation pour le filtre guidé',
+                'label': t('param_udcp_guided_eps_label'),
+                'description': t('param_udcp_guided_eps_desc'),
                 'min': 0.0001,
                 'max': 0.01,
                 'step': 0.0001
             },
             'udcp_enhance_contrast': {
                 'type': 'float',
-                'label': 'Amélioration du contraste',
-                'description': 'Facteur d\'amélioration du contraste final',
+                'label': t('param_udcp_enhance_contrast_label'),
+                'description': t('param_udcp_enhance_contrast_desc'),
                 'min': 0.5,
                 'max': 2.0,
+                'step': 0.1
+            },
+            
+            # Beer-Lambert law correction parameters
+            'beer_lambert_enabled': {
+                'type': 'boolean',
+                'label': t('param_beer_lambert_enabled_label'),
+                'description': t('param_beer_lambert_enabled_desc')
+            },
+            'beer_lambert_depth_factor': {
+                'type': 'float',
+                'label': t('param_beer_lambert_depth_factor_label'),
+                'description': t('param_beer_lambert_depth_factor_desc'),
+                'min': 0.01,
+                'max': 1.0,
+                'step': 0.01
+            },
+            'beer_lambert_red_coeff': {
+                'type': 'float',
+                'label': t('param_beer_lambert_red_coeff_label'),
+                'description': t('param_beer_lambert_red_coeff_desc'),
+                'min': 0.1,
+                'max': 2.0,
+                'step': 0.1
+            },
+            'beer_lambert_green_coeff': {
+                'type': 'float',
+                'label': t('param_beer_lambert_green_coeff_label'),
+                'description': t('param_beer_lambert_green_coeff_desc'),
+                'min': 0.1,
+                'max': 2.0,
+                'step': 0.1
+            },
+            'beer_lambert_blue_coeff': {
+                'type': 'float',
+                'label': t('param_beer_lambert_blue_coeff_label'),
+                'description': t('param_beer_lambert_blue_coeff_desc'),
+                'min': 0.01,
+                'max': 1.0,
+                'step': 0.01
+            },
+            'beer_lambert_enhance_factor': {
+                'type': 'float',
+                'label': t('param_beer_lambert_enhance_factor_label'),
+                'description': t('param_beer_lambert_enhance_factor_desc'),
+                'min': 0.5,
+                'max': 3.0,
                 'step': 0.1
             },
             
             # Histogram equalization parameters
             'hist_eq_enabled': {
                 'type': 'boolean',
-                'label': 'Égalisation d\'histogramme',
-                'description': 'Applique l\'égalisation adaptative d\'histogramme pour améliorer le contraste'
+                'label': t('param_hist_eq_enabled_label'),
+                'description': t('param_hist_eq_enabled_desc')
             },
             'hist_eq_clip_limit': {
                 'type': 'float',
-                'label': 'Limite de coupure CLAHE',
-                'description': 'Seuil pour la limitation du contraste dans l\'algorithme CLAHE',
+                'label': t('param_hist_eq_clip_limit_label'),
+                'description': t('param_hist_eq_clip_limit_desc'),
                 'min': 1.0,
                 'max': 10.0,
                 'step': 0.5
             },
             'hist_eq_tile_grid_size': {
                 'type': 'int',
-                'label': 'Taille des tuiles CLAHE',
-                'description': 'Taille des tuiles pour l\'égalisation adaptative d\'histogramme',
+                'label': t('param_hist_eq_tile_grid_size_label'),
+                'description': t('param_hist_eq_tile_grid_size_desc'),
                 'min': 4,
                 'max': 16,
                 'step': 2

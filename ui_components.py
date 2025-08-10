@@ -90,6 +90,16 @@ class ParameterPanel(ttk.Frame):
                     'udcp_guided_radius', 'udcp_guided_eps', 'udcp_enhance_contrast'
                 ]
             },
+            'beer_lambert': {
+                'title': t('beer_lambert_step_title'),
+                'description': t('beer_lambert_step_desc'),
+                'enable_param': 'beer_lambert_enabled',
+                'parameters': [
+                    'beer_lambert_depth_factor', 'beer_lambert_red_coeff',
+                    'beer_lambert_green_coeff', 'beer_lambert_blue_coeff',
+                    'beer_lambert_enhance_factor'
+                ]
+            },
             'histogram_equalization': {
                 'title': t('histogram_equalization_step_title'),
                 'description': t('histogram_equalization_step_desc'),
