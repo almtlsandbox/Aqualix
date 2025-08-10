@@ -61,6 +61,7 @@ class LocalizationManager:
             'tab_parameters': 'Paramètres',
             'tab_operations': 'Opérations',
             'tab_info': 'Informations',
+            'tab_about': 'À propos',
             
             # Panel titles
             'parameters_title': 'Paramètres de traitement',
@@ -283,7 +284,36 @@ class LocalizationManager:
             # Language
             'language': 'Langue',
             'french': 'Français',
-            'english': 'English'
+            'english': 'English',
+            
+            # About section
+            'about_title': 'À propos d\'Aqualix',
+            'about_app_name': 'Aqualix',
+            'about_version': 'Version 1.0.0',
+            'about_description': 'Application de traitement d\'images et vidéos sous-marines',
+            'about_author': 'Auteur',
+            'about_author_name': 'Votre Nom',
+            'about_contact': 'Contact',
+            'about_email': 'votre.email@example.com',
+            'about_website': 'Site web',
+            'about_website_url': 'https://github.com/almtlsandbox/Aqualix',
+            'about_license': 'Licence',
+            'about_license_type': 'MIT License',
+            'about_copyright': 'Copyright © 2025 Tous droits réservés',
+            'about_features_title': 'Fonctionnalités principales',
+            'about_feature_1': '• Correction automatique de la balance des blancs (5 algorithmes)',
+            'about_feature_2': '• Traitement UDCP pour images sous-marines',
+            'about_feature_3': '• Correction Beer-Lambert pour l\'atténuation en profondeur',
+            'about_feature_4': '• Égalisation d\'histogramme adaptatif (CLAHE)',
+            'about_feature_5': '• Interface interactive avec zoom, panoramique et rotation',
+            'about_feature_6': '• Support multilingue (Français/Anglais)',
+            'about_feature_7': '• Traitement par lots pour les vidéos',
+            'about_tech_title': 'Technologies utilisées',
+            'about_tech_1': '• Python 3.9+ avec OpenCV et PIL/Pillow',
+            'about_tech_2': '• Interface Tkinter avec composants ttk',
+            'about_tech_3': '• Algorithmes de vision par ordinateur avancés',
+            'about_acknowledgments': 'Remerciements',
+            'about_thanks': 'Merci à la communauté OpenCV et aux chercheurs en vision sous-marine'
         }
         
         # English translations
@@ -303,6 +333,7 @@ class LocalizationManager:
             'tab_parameters': 'Parameters',
             'tab_operations': 'Operations',
             'tab_info': 'Information',
+            'tab_about': 'About',
             
             # Panel titles
             'parameters_title': 'Processing Parameters',
@@ -525,7 +556,65 @@ class LocalizationManager:
             # Language
             'language': 'Language',
             'french': 'Français',
-            'english': 'English'
+            'english': 'English',
+            
+            # About section
+            'about_title': 'About Aqualix',
+            'about_app_name': 'Aqualix',
+            'about_version': 'Version 1.0.0',
+            'about_description': 'Underwater image and video processing application',
+            'about_author': 'Author',
+            'about_author_name': 'Your Name',
+            'about_contact': 'Contact',
+            'about_email': 'your.email@example.com',
+            'about_website': 'Website',
+            'about_website_url': 'https://github.com/almtlsandbox/Aqualix',
+            'about_license': 'License',
+            'about_license_type': 'MIT License',
+            'about_copyright': 'Copyright © 2025 All rights reserved',
+            'about_features_title': 'Key Features',
+            'about_feature_1': '• Automatic white balance correction (5 algorithms)',
+            'about_feature_2': '• UDCP processing for underwater images',
+            'about_feature_3': '• Beer-Lambert correction for depth attenuation',
+            'about_feature_4': '• Adaptive histogram equalization (CLAHE)',
+            'about_feature_5': '• Interactive interface with zoom, pan, and rotation',
+            'about_feature_6': '• Multilingual support (French/English)',
+            'about_feature_7': '• Batch processing for videos',
+            'about_tech_title': 'Technologies Used',
+            'about_tech_1': '• Python 3.9+ with OpenCV and PIL/Pillow',
+            'about_tech_2': '• Tkinter interface with ttk components',
+            'about_tech_3': '• Advanced computer vision algorithms',
+            'about_acknowledgments': 'Acknowledgments',
+            'about_thanks': 'Thanks to the OpenCV community and underwater vision researchers',
+            
+            # About section
+            'about_title': 'About Aqualix',
+            'about_app_name': 'Aqualix',
+            'about_version': 'Version 1.0.0',
+            'about_description': 'Underwater image and video processing application',
+            'about_author': 'Author',
+            'about_author_name': 'Your Name',
+            'about_contact': 'Contact',
+            'about_email': 'your.email@example.com',
+            'about_website': 'Website',
+            'about_website_url': 'https://github.com/almtlsandbox/Aqualix',
+            'about_license': 'License',
+            'about_license_type': 'MIT License',
+            'about_copyright': 'Copyright © 2025 All rights reserved',
+            'about_features_title': 'Key Features',
+            'about_feature_1': '• Automatic white balance correction (5 algorithms)',
+            'about_feature_2': '• UDCP processing for underwater images',
+            'about_feature_3': '• Beer-Lambert correction for depth attenuation',
+            'about_feature_4': '• Adaptive histogram equalization (CLAHE)',
+            'about_feature_5': '• Interactive interface with zoom, pan, and rotation',
+            'about_feature_6': '• Multilingual support (French/English)',
+            'about_feature_7': '• Batch processing for videos',
+            'about_tech_title': 'Technologies Used',
+            'about_tech_1': '• Python 3.9+ with OpenCV and PIL/Pillow',
+            'about_tech_2': '• Tkinter interface with ttk components',
+            'about_tech_3': '• Advanced computer vision algorithms',
+            'about_acknowledgments': 'Acknowledgments',
+            'about_thanks': 'Thanks to the OpenCV community and underwater vision researchers'
         }
         
     def set_language(self, language):

@@ -10,6 +10,22 @@ from PIL import Image, ImageTk
 from typing import Dict, Any, List, Callable, Union, Optional
 from image_info import ImageInfoExtractor
 from localization import t
+try:
+    from about_config import AUTHOR_INFO, APP_INFO
+except ImportError:
+    # Fallback values if config file is missing
+    AUTHOR_INFO = {
+        'name': 'Arnaud Dominique Lina',
+        'email': 'arnauddominique.lina@gmail.com', 
+        'website': 'https://www.ridinaroundmtl.ca/',
+        'github': 'https://github.com/almtlsandbox/Aqualix',
+        'version': '1.0.0',
+        'year': '2025'
+    }
+    APP_INFO = {
+        'name': 'Aqualix',
+        'license': 'MIT License'
+    }
 
 class ParameterPanel(ttk.Frame):
     """Panel for adjusting processing parameters"""
@@ -1257,3 +1273,142 @@ class ImageInfoPanel(ttk.Frame):
             self.info_notebook.tab(1, text=t('info_tab_properties'))
             self.info_notebook.tab(2, text=t('info_tab_analysis'))
             self.info_notebook.tab(3, text=t('info_tab_exif'))
+
+
+class AboutPanel(ttk.Frame):
+    """Panel showing application information and credits"""
+    
+    def __init__(self, parent):
+        super().__init__(parent)
+        self.setup_ui()
+        
+    def setup_ui(self):
+        """Setup the about panel UI"""
+        # Main scrollable frame
+        canvas = tk.Canvas(self)
+        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        self.scrollable_frame = ttk.Frame(canvas)
+        
+        self.scrollable_frame.bind(
+            "<Configure>",
+            lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
+        )
+        
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
+        canvas.configure(yscrollcommand=scrollbar.set)
+        
+        # Content
+        self.create_about_content()
+        
+        canvas.pack(side="left", fill="both", expand=True)
+        scrollbar.pack(side="right", fill="y")
+        
+        # Bind mousewheel
+        def _on_mousewheel(event):
+            canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
+    def create_about_content(self):
+        """Create the about panel content"""
+        frame = self.scrollable_frame
+        
+        # App title and version
+        title_frame = ttk.Frame(frame)
+        title_frame.pack(fill=tk.X, pady=(10, 20))
+        
+        app_name = ttk.Label(title_frame, text=APP_INFO['name'], 
+                           font=('Arial', 18, 'bold'), foreground='#2E8B57')
+        app_name.pack()
+        
+        version_label = ttk.Label(title_frame, text=f"Version {AUTHOR_INFO['version']}", 
+                                font=('Arial', 12), foreground='gray')
+        version_label.pack()
+        
+        description_label = ttk.Label(title_frame, text=t('about_description'), 
+                                    font=('Arial', 11), foreground='#444')
+        description_label.pack(pady=(5, 0))
+        
+        # Separator
+        ttk.Separator(frame, orient='horizontal').pack(fill=tk.X, pady=20)
+        
+        # Author section
+        author_frame = ttk.LabelFrame(frame, text=t('about_author'), padding="10")
+        author_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        author_name = ttk.Label(author_frame, text=AUTHOR_INFO['name'], 
+                              font=('Arial', 11, 'bold'))
+        author_name.pack(anchor='w')
+        
+        # Contact info
+        contact_frame = ttk.Frame(author_frame)
+        contact_frame.pack(fill=tk.X, pady=(10, 0))
+        
+        contact_label = ttk.Label(contact_frame, text=f"{t('about_contact')}:", 
+                                font=('Arial', 10, 'bold'))
+        contact_label.pack(anchor='w')
+        
+        email_label = ttk.Label(contact_frame, text=f"📧 {AUTHOR_INFO['email']}", 
+                              font=('Arial', 10), foreground='#0066CC')
+        email_label.pack(anchor='w', padx=(10, 0))
+        
+        website_label = ttk.Label(contact_frame, text=f"🌐 {AUTHOR_INFO['website']}", 
+                                font=('Arial', 10), foreground='#0066CC')
+        website_label.pack(anchor='w', padx=(10, 0))
+        
+        github_label = ttk.Label(contact_frame, text=f"💻 {AUTHOR_INFO['github']}", 
+                               font=('Arial', 10), foreground='#0066CC')
+        github_label.pack(anchor='w', padx=(10, 0))
+        
+        # Features section
+        features_frame = ttk.LabelFrame(frame, text=t('about_features_title'), padding="10")
+        features_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        features = ['about_feature_1', 'about_feature_2', 'about_feature_3', 
+                   'about_feature_4', 'about_feature_5', 'about_feature_6', 'about_feature_7']
+        
+        for feature_key in features:
+            feature_label = ttk.Label(features_frame, text=t(feature_key), 
+                                    font=('Arial', 10))
+            feature_label.pack(anchor='w', pady=1)
+        
+        # Technologies section
+        tech_frame = ttk.LabelFrame(frame, text=t('about_tech_title'), padding="10")
+        tech_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        tech_items = ['about_tech_1', 'about_tech_2', 'about_tech_3']
+        
+        for tech_key in tech_items:
+            tech_label = ttk.Label(tech_frame, text=t(tech_key), 
+                                 font=('Arial', 10))
+            tech_label.pack(anchor='w', pady=1)
+        
+        # License section
+        license_frame = ttk.LabelFrame(frame, text=t('about_license'), padding="10")
+        license_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        license_label = ttk.Label(license_frame, text=APP_INFO['license'], 
+                                font=('Arial', 10, 'bold'))
+        license_label.pack(anchor='w')
+        
+        copyright_text = f"Copyright © {AUTHOR_INFO['year']} {AUTHOR_INFO['name']} - {t('about_copyright').split('©')[1].strip()}"
+        copyright_label = ttk.Label(license_frame, text=copyright_text, 
+                                  font=('Arial', 9), foreground='gray')
+        copyright_label.pack(anchor='w', pady=(5, 0))
+        
+        # Acknowledgments section
+        ack_frame = ttk.LabelFrame(frame, text=t('about_acknowledgments'), padding="10")
+        ack_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        thanks_label = ttk.Label(ack_frame, text=t('about_thanks'), 
+                               font=('Arial', 10), wraplength=300)
+        thanks_label.pack(anchor='w')
+        
+        # Footer spacing
+        ttk.Label(frame, text="").pack(pady=20)
+        
+    def refresh_ui(self):
+        """Refresh UI texts after language change"""
+        # Clear and recreate content
+        for widget in self.scrollable_frame.winfo_children():
+            widget.destroy()
+        self.create_about_content()

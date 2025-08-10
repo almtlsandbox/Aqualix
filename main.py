@@ -14,7 +14,7 @@ import threading
 from pathlib import Path
 
 from image_processing import ImageProcessor
-from ui_components import ParameterPanel, PipelinePanel, InteractivePreviewPanel, ImageInfoPanel
+from ui_components import ParameterPanel, PipelinePanel, InteractivePreviewPanel, ImageInfoPanel, AboutPanel
 from logger import AqualixLogger
 from localization import get_localization_manager, t
 
@@ -95,6 +95,14 @@ class ImageVideoProcessorApp:
         # Image info panel
         self.info_panel = ImageInfoPanel(info_frame)
         self.info_panel.pack(fill=tk.BOTH, expand=True)
+        
+        # About tab
+        about_frame = ttk.Frame(self.notebook)
+        self.notebook.add(about_frame, text=t('tab_about'))
+        
+        # About panel
+        self.about_panel = AboutPanel(about_frame)
+        self.about_panel.pack(fill=tk.BOTH, expand=True)
         
         # Right panel - Preview
         right_panel = ttk.Frame(content_frame)
@@ -549,6 +557,7 @@ class ImageVideoProcessorApp:
         self.notebook.tab(0, text=t('tab_parameters'))
         self.notebook.tab(1, text=t('tab_operations'))
         self.notebook.tab(2, text=t('tab_info'))
+        self.notebook.tab(3, text=t('tab_about'))
         
         # Update toolbar button texts (without recreating)
         self.refresh_toolbar()
@@ -564,6 +573,10 @@ class ImageVideoProcessorApp:
         # Update info panel
         if hasattr(self, 'info_panel'):
             self.info_panel.refresh_ui()
+            
+        # Update about panel
+        if hasattr(self, 'about_panel'):
+            self.about_panel.refresh_ui()
             
         # Update preview panel
         if hasattr(self, 'preview_panel'):
