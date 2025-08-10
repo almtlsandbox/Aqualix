@@ -7,6 +7,32 @@ import cv2
 import numpy as np
 from typing import Dict, Any, List, Tuple
 
+def create_preview_image(image: np.ndarray, max_size: int = 1024) -> Tuple[np.ndarray, float]:
+    """
+    Create a subsampled image for preview if the original is too large.
+    
+    Args:
+        image: Input image as numpy array
+        max_size: Maximum dimension size for preview
+        
+    Returns:
+        Tuple of (preview_image, scale_factor)
+    """
+    height, width = image.shape[:2]
+    max_dimension = max(height, width)
+    
+    if max_dimension <= max_size:
+        return image.copy(), 1.0
+    
+    scale_factor = max_size / max_dimension
+    new_width = int(width * scale_factor)
+    new_height = int(height * scale_factor)
+    
+    # Use INTER_AREA for downsampling (better quality)
+    preview_image = cv2.resize(image, (new_width, new_height), interpolation=cv2.INTER_AREA)
+    
+    return preview_image, scale_factor
+
 class ImageProcessor:
     def __init__(self):
         # Initialize parameters with default values
@@ -69,6 +95,31 @@ class ImageProcessor:
                 result = self.adaptive_histogram_equalization(result)
                 
         return result
+    
+    def process_image_for_preview(self, image: np.ndarray, max_size: int = 1024) -> Tuple[np.ndarray, np.ndarray, float]:
+        """
+        Process an image for preview, using subsampling for large images.
+        
+        Args:
+            image: Input image
+            max_size: Maximum dimension for preview
+            
+        Returns:
+            Tuple of (original_preview, processed_preview, scale_factor)
+        """
+        # Create preview version of original image
+        original_preview, scale_factor = create_preview_image(image, max_size)
+        
+        # Process the preview image
+        processed_preview = original_preview.copy()
+        
+        for operation in self.pipeline_order:
+            if operation == 'white_balance' and self.parameters['white_balance_enabled']:
+                processed_preview = self.apply_white_balance(processed_preview)
+            elif operation == 'histogram_equalization' and self.parameters['hist_eq_enabled']:
+                processed_preview = self.adaptive_histogram_equalization(processed_preview)
+                
+        return original_preview, processed_preview, scale_factor
     
     def apply_white_balance(self, image: np.ndarray) -> np.ndarray:
         """Apply the selected white balance method"""

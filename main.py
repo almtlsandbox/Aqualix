@@ -35,6 +35,11 @@ class ImageVideoProcessorApp:
         self.current_frame = 0
         self.total_frames = 0
         
+        # Preview variables for performance optimization
+        self.preview_scale_factor = 1.0
+        self.original_preview = None
+        self.processed_preview = None
+        
         # Initialize image processor and logger
         self.processor = ImageProcessor()
         self.logger = AqualixLogger()
@@ -321,26 +326,66 @@ class ImageVideoProcessorApp:
             self.load_video_frame(frame_number)
             
     def update_preview(self):
-        """Update the preview with processed image"""
+        """Update the preview with processed image using optimized subsampling for large images"""
         if self.original_image is None:
             return
             
         try:
-            # Process image
-            self.processed_image = self.processor.process_image(self.original_image.copy())
+            # Use optimized preview processing for large images
+            self.original_preview, self.processed_preview, self.preview_scale_factor = self.processor.process_image_for_preview(
+                self.original_image.copy(), max_size=1024
+            )
             
-            # Update preview panel
-            self.preview_panel.update_images(self.original_image, self.processed_image)
+            # Mark that full-size processed image needs to be updated when needed
+            self.processed_image = None
+            
+            # Update preview panel with preview images
+            self.preview_panel.update_images(self.original_preview, self.processed_preview)
             
             # Update pipeline description
             self.pipeline_panel.update_pipeline(self.processor.get_pipeline_description())
             
+            # Log preview information for debugging
+            if self.preview_scale_factor < 1.0:
+                original_size = self.original_image.shape[:2]
+                preview_size = self.original_preview.shape[:2]
+                self.logger.info(f"Preview subsampling: {original_size[1]}x{original_size[0]} -> {preview_size[1]}x{preview_size[0]} (scale: {self.preview_scale_factor:.3f})")
+            
         except Exception as e:
             messagebox.showerror("Error", f"Could not process image: {str(e)}")
+            self.logger.error(f"Preview update error: {str(e)}")
+            
+    def get_full_resolution_processed_image(self):
+        """Get the full resolution processed image (process if needed)"""
+        if self.original_image is None:
+            return None
+            
+        # If we already have a full resolution processed image, return it
+        if self.processed_image is not None:
+            return self.processed_image
+            
+        # Otherwise, process the full resolution image
+        try:
+            self.logger.info("Processing full resolution image for saving...")
+            original_size = self.original_image.shape[:2]
+            self.logger.info(f"Full resolution: {original_size[1]}x{original_size[0]} pixels")
+            
+            # Process the full resolution image
+            self.processed_image = self.processor.process_image(self.original_image.copy())
+            
+            self.logger.info("Full resolution processing completed")
+            return self.processed_image
+            
+        except Exception as e:
+            self.logger.error(f"Error processing full resolution image: {str(e)}")
+            return None
             
     def save_result(self):
         """Save the processed result"""
-        if self.processed_image is None:
+        # Get full resolution processed image
+        full_res_image = self.get_full_resolution_processed_image()
+        
+        if full_res_image is None:
             messagebox.showwarning("Warning", "No processed image to save")
             return
             
@@ -366,15 +411,40 @@ class ImageVideoProcessorApp:
         
         if file_path:
             try:
-                if self.processed_image is None:
+                # Show processing message for large images
+                if self.processed_image is None and self.preview_scale_factor < 1.0:
+                    # Create a simple progress window
+                    progress_window = tk.Toplevel(self.root)
+                    progress_window.title("Processing...")
+                    progress_window.geometry("300x80")
+                    progress_window.transient(self.root)
+                    progress_window.grab_set()
+                    
+                    progress_label = ttk.Label(progress_window, text="Processing full resolution image...")
+                    progress_label.pack(pady=20)
+                    
+                    # Update the window to show it
+                    progress_window.update()
+                    
+                    # Get full resolution processed image
+                    full_res_image = self.get_full_resolution_processed_image()
+                    
+                    # Close progress window
+                    progress_window.destroy()
+                else:
+                    full_res_image = self.get_full_resolution_processed_image()
+                    
+                if full_res_image is None:
                     raise ValueError("No processed image to save")
                     
                 # Convert RGB to BGR for saving
-                image_bgr = cv2.cvtColor(self.processed_image, cv2.COLOR_RGB2BGR)
+                image_bgr = cv2.cvtColor(full_res_image, cv2.COLOR_RGB2BGR)
                 cv2.imwrite(file_path, image_bgr)
                 messagebox.showinfo("Success", "Image saved successfully!")
+                self.logger.info(f"Image saved: {file_path}")
             except Exception as e:
                 messagebox.showerror("Error", f"Could not save image: {str(e)}")
+                self.logger.error(f"Save image error: {str(e)}")
                 
     def save_video(self):
         """Save processed video"""

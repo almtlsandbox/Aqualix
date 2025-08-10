@@ -5,6 +5,27 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.0.0/),
 et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
 
+## [1.2.0] - 2025-08-10
+
+### Ajouté
+- **Optimisation des performances pour les grandes images**
+  - Sous-échantillonnage automatique pour l'aperçu (images >1024px)
+  - Traitement pleine résolution maintenu pour la sauvegarde
+  - Amélioration significative de la réactivité de l'interface
+  - Journalisation automatique du facteur d'échelle dans les logs
+
+### Amélioré
+- **Interface utilisateur**
+  - Fluidité améliorée avec les images haute résolution
+  - Temps de réponse réduit lors du changement de paramètres
+  - Meilleure expérience utilisateur globale
+
+### Technique
+- Nouvelle fonction `create_preview_image()` pour le sous-échantillonnage
+- Méthode `process_image_for_preview()` dans `ImageProcessor`
+- Gestion automatique des facteurs d'échelle
+- Logs détaillés des optimisations de performance
+
 ## [1.1.0] - 2024-01-15
 
 ### Ajouté

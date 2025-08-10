@@ -25,6 +25,12 @@ Une application Python Tkinter pour le traitement interactif d'images et de vid�
 - Configuration flexible des paramètres de sortie
 - Rapports de progression détaillés
 
+#### Optimisation des performances 🚀
+- **Aperçu sous-échantillonné** : Les images supérieures à 1024px dans une direction sont automatiquement réduites pour l'aperçu
+- **Traitement pleine résolution** : L'image originale complète est utilisée pour la sauvegarde
+- **Fluidité améliorée** : Interface responsive même avec des images très volumineuses
+- **Journalisation des performances** : Suivi automatique du facteur d'échelle dans les logs
+
 #### Système de journalisation avancé
 - **Fichiers de log rotatifs** dans le dossier `logs/`
 - **Niveaux configurables** : DEBUG, INFO, WARNING, ERROR
