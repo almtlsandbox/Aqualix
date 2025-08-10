@@ -252,8 +252,9 @@ class InteractivePreviewPanel(ttk.Frame):
         ttk.Button(controls_frame, text="-", width=3, command=self.zoom_out).pack(side=tk.LEFT, padx=(5, 2))
         ttk.Button(controls_frame, text="+", width=3, command=self.zoom_in).pack(side=tk.LEFT, padx=(2, 10))
         
-        # Reset button
-        ttk.Button(controls_frame, text="Réinitialiser", command=self.reset_view).pack(side=tk.LEFT, padx=(10, 5))
+        # View control buttons
+        ttk.Button(controls_frame, text="Ajuster", command=self.fit_to_canvas).pack(side=tk.LEFT, padx=(10, 5))
+        ttk.Button(controls_frame, text="1:1", command=self.reset_view).pack(side=tk.LEFT, padx=(5, 5))
         
         # Rotation controls
         ttk.Label(controls_frame, text="Rotation:").pack(side=tk.LEFT, padx=(10, 5))
@@ -308,13 +309,45 @@ class InteractivePreviewPanel(ttk.Frame):
         self.update_display()
         
     def reset_view(self):
-        """Reset all view parameters"""
+        """Reset all view parameters to 1:1 scale"""
         self.zoom_factor = 1.0
         self.pan_x = 0
         self.pan_y = 0
         self.rotation = 0.0
         self.split_var.set(0.5)
         self.split_position = 0.5
+        self.update_display()
+        
+    def fit_to_canvas(self):
+        """Fit image to canvas size"""
+        if not hasattr(self, 'original_image') or self.original_image is None:
+            return
+            
+        # Get canvas dimensions - wait for canvas to be rendered
+        self.canvas.update_idletasks()
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+        
+        # If canvas is not yet rendered properly, try again later
+        if canvas_width <= 1 or canvas_height <= 1:
+            self.canvas.after(100, self.fit_to_canvas)
+            return
+            
+        # Get image dimensions
+        img_height, img_width = self.original_image.shape[:2]
+        
+        # Calculate scale factors
+        scale_x = canvas_width / img_width
+        scale_y = canvas_height / img_height
+        
+        # Use the smaller scale to fit entirely within canvas
+        fit_scale = min(scale_x, scale_y) * 0.9  # 90% to leave some margin
+        
+        # Apply the calculated scale
+        self.zoom_factor = fit_scale
+        self.pan_x = 0
+        self.pan_y = 0
+        self.rotation = 0.0
         self.update_display()
         
     def on_mouse_down(self, event):
@@ -413,7 +446,9 @@ class InteractivePreviewPanel(ttk.Frame):
         """Update the displayed images"""
         self.original_image = original
         self.processed_image = processed
-        self.update_display()
+        
+        # Auto-fit image to canvas when loading a new image
+        self.canvas.after(50, self.fit_to_canvas)  # Small delay to ensure canvas is rendered
         
     def update_display(self):
         """Update the interactive split view display"""
