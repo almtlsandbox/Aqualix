@@ -164,7 +164,7 @@ class ParameterPanel(ttk.Frame):
             'multiscale_fusion': {
                 'title': t('multiscale_fusion_step_title'),
                 'description': t('multiscale_fusion_step_desc'),
-                'enable_param': None,  # Always enabled as final step
+                'enable_param': 'multiscale_fusion_enabled',
                 'parameters': [
                     'fusion_laplacian_levels', 'fusion_contrast_weight', 'fusion_saturation_weight',
                     'fusion_exposedness_weight', 'fusion_sigma_1', 'fusion_sigma_2', 'fusion_sigma_3'
@@ -218,17 +218,23 @@ class ParameterPanel(ttk.Frame):
         header_frame.pack(fill=tk.X, pady=(0, 5))
         
         # Step enable/disable checkbox
-        enable_var = tk.BooleanVar(value=self.processor.get_parameter(step_info['enable_param']))
-        enable_checkbox = ttk.Checkbutton(
-            header_frame,
-            text=step_info['title'],
-            variable=enable_var,
-            command=lambda: self.on_parameter_change(step_info['enable_param'], enable_var.get())
-        )
-        enable_checkbox.pack(side=tk.LEFT)
-        
-        # Store enable widget
-        self.param_widgets[step_info['enable_param']] = enable_var
+        if step_info['enable_param']:
+            enable_var = tk.BooleanVar(value=self.processor.get_parameter(step_info['enable_param']))
+            enable_checkbox = ttk.Checkbutton(
+                header_frame,
+                text=step_info['title'],
+                variable=enable_var,
+                command=lambda: self.on_parameter_change(step_info['enable_param'], enable_var.get())
+            )
+            enable_checkbox.pack(side=tk.LEFT)
+            
+            # Store enable widget
+            self.param_widgets[step_info['enable_param']] = enable_var
+        else:
+            # If no enable parameter, create a simple label
+            enable_label = ttk.Label(header_frame, text=step_info['title'], font=('Arial', 10, 'bold'))
+            enable_label.pack(side=tk.LEFT)
+            enable_checkbox = None
         
         # Right side buttons frame
         buttons_frame = ttk.Frame(header_frame)
