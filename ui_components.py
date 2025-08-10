@@ -60,8 +60,17 @@ class ParameterPanel(ttk.Frame):
         )
         expand_all_checkbox.pack(side=tk.LEFT)
         
-        # Store checkbox for refresh_ui
+        # Global reset button
+        global_reset_button = ttk.Button(
+            controls_frame,
+            text=t('reset_all_parameters'),
+            command=self.reset_all_parameters
+        )
+        global_reset_button.pack(side=tk.RIGHT, padx=(5, 0))
+        
+        # Store checkbox and button for refresh_ui
         self.expand_all_checkbox = expand_all_checkbox
+        self.global_reset_button = global_reset_button
         
         # Scrollable frame for parameters
         canvas = tk.Canvas(self, height=500)
@@ -524,6 +533,30 @@ class ParameterPanel(ttk.Frame):
         except Exception as e:
             print(f"Error resetting step {step_key}: {e}")
     
+    def reset_all_parameters(self):
+        """Reset ALL parameters to their default values"""
+        try:
+            # Get all default parameters
+            default_params = self.processor.get_default_parameters()
+            
+            # Reset each parameter to its default value
+            for param_name, default_value in default_params.items():
+                self.processor.set_parameter(param_name, default_value)
+            
+            # Update UI widgets to reflect the new values
+            self.update_ui_from_parameters()
+            
+            # Update parameter visibility (important for conditional parameters)
+            self.refresh_ui()
+            
+            # Trigger preview update
+            self.update_callback()
+            
+            print("All parameters reset to default values")
+            
+        except Exception as e:
+            print(f"Error resetting all parameters: {e}")
+    
     def update_ui_from_parameters(self):
         """Update all UI widgets to match current parameter values"""
         for param_name, widget in self.param_widgets.items():
@@ -564,6 +597,9 @@ class ParameterPanel(ttk.Frame):
         # Update button texts
         if hasattr(self, 'expand_all_checkbox'):
             self.expand_all_checkbox.config(text=t('expand_all_sections'))
+        
+        if hasattr(self, 'global_reset_button'):
+            self.global_reset_button.config(text=t('reset_all_parameters'))
         
         # Clear existing parameter widgets
         for widget in self.scrollable_frame.winfo_children():

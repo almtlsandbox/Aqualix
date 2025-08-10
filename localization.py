@@ -145,6 +145,8 @@ class LocalizationManager:
             'reset_defaults': 'Réinitialiser',
             'reset_defaults_tooltip': 'Rétablir les paramètres par défaut de cette section',
             'expand_all_sections': 'Développer toutes les sections',
+            'reset_all_parameters': 'Reset Global',
+            'reset_all_parameters_tooltip': 'Remettre TOUS les paramètres à leurs valeurs par défaut',
             'no_image_loaded': 'Aucune image chargée',
             'preview_instructions': 'Contrôles: Clic gauche + glisser pour déplacer • Molette pour zoomer • Glisser la ligne de division',
             
@@ -460,6 +462,8 @@ class LocalizationManager:
             'reset_defaults': 'Reset',
             'reset_defaults_tooltip': 'Reset this section parameters to default values',
             'expand_all_sections': 'Expand all sections',
+            'reset_all_parameters': 'Global Reset',
+            'reset_all_parameters_tooltip': 'Reset ALL parameters to their default values',
             'no_image_loaded': 'No image loaded',
             'preview_instructions': 'Controls: Left click + drag to pan • Mouse wheel to zoom • Drag the split line',
             
