@@ -145,7 +145,7 @@ class LocalizationManager:
             'reset_defaults': 'Réinitialiser',
             'reset_defaults_tooltip': 'Rétablir les paramètres par défaut de cette section',
             'expand_all_sections': 'Développer toutes les sections',
-            'reset_all_parameters': 'Reset Global',
+            'reset_all_parameters': 'Réinitialiser Tout',
             'reset_all_parameters_tooltip': 'Remettre TOUS les paramètres à leurs valeurs par défaut',
             'no_image_loaded': 'Aucune image chargée',
             'preview_instructions': 'Contrôles: Clic gauche + glisser pour déplacer • Molette pour zoomer • Glisser la ligne de division',
