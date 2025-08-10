@@ -30,6 +30,12 @@ et ce projet adhère au [Versioning Sémantique](https://semver.org/lang/fr/).
   - Ajustement automatique des nouvelles images au chargement
   - Renommage du bouton "Réinitialiser" en "1:1" pour plus de clarté
 
+- **Support multilingue** :
+  - Interface disponible en français et anglais
+  - Sélecteur de langue intégré dans la barre d'outils
+  - Changement de langue instantané sans redémarrage
+  - Plus de 200 traductions couvrant toute l'interface
+
 ### Modifié
 - Interface utilisateur reorganisée en trois onglets : Paramètres, Opérations, Informations
 - Amélioration de l'expérience utilisateur avec ajustement automatique d'image

@@ -25,7 +25,7 @@ class ParameterPanel(ttk.Frame):
     def setup_ui(self):
         """Setup the parameter panel UI"""
         # Title
-        title_label = ttk.Label(self, text="Paramètres de traitement", font=('Arial', 12, 'bold'))
+        title_label = ttk.Label(self, text=t('parameters_title'), font=('Arial', 12, 'bold'))
         title_label.pack(pady=(0, 10))
         
         # Scrollable frame for parameters
@@ -149,6 +149,14 @@ class ParameterPanel(ttk.Frame):
         """Handle parameter change"""
         self.processor.set_parameter(param_name, value)
         self.update_callback()
+        
+    def refresh_ui(self):
+        """Refresh UI texts after language change"""
+        # Find and update title label
+        for child in self.winfo_children():
+            if isinstance(child, ttk.Label):
+                child.config(text=t('parameters_title'))
+                break
 
 class PipelinePanel(ttk.Frame):
     """Panel showing the processing pipeline description"""
@@ -160,7 +168,7 @@ class PipelinePanel(ttk.Frame):
     def setup_ui(self):
         """Setup the pipeline panel UI"""
         # Title
-        title_label = ttk.Label(self, text="Pipeline des opérations", font=('Arial', 12, 'bold'))
+        title_label = ttk.Label(self, text=t('pipeline_title'), font=('Arial', 12, 'bold'))
         title_label.pack(pady=(0, 5))
         
         # Scrollable text widget
@@ -201,6 +209,14 @@ class PipelinePanel(ttk.Frame):
         self.text_widget.tag_config("arrow", font=('Arial', 12), justify='center')
         
         self.text_widget.config(state=tk.DISABLED)
+        
+    def refresh_ui(self):
+        """Refresh UI texts after language change"""
+        # Find and update title label
+        for child in self.winfo_children():
+            if isinstance(child, ttk.Label):
+                child.config(text=t('pipeline_title'))
+                break
 
 class InteractivePreviewPanel(ttk.Frame):
     """Interactive split view panel with zoom, pan, rotate, and moveable divider"""
@@ -228,7 +244,7 @@ class InteractivePreviewPanel(ttk.Frame):
     def setup_ui(self):
         """Setup the interactive preview panel UI"""
         # Title
-        title_label = ttk.Label(self, text="Vue comparative interactive", font=('Arial', 12, 'bold'))
+        title_label = ttk.Label(self, text=t('preview_title'), font=('Arial', 12, 'bold'))
         title_label.pack(pady=(0, 5))
         
         # Control panel
@@ -277,8 +293,8 @@ class InteractivePreviewPanel(ttk.Frame):
         self.canvas.bind("<Configure>", self.on_canvas_resize)
         
         # Instructions
-        instructions = "Contrôles: Clic gauche + glisser pour déplacer • Molette pour zoomer • Glisser la ligne de division"
-        ttk.Label(self, text=instructions, font=('Arial', 8), foreground='gray').pack(pady=(2, 0))
+        self.instructions_label = ttk.Label(self, text=t('preview_instructions'), font=('Arial', 8), foreground='gray')
+        self.instructions_label.pack(pady=(2, 0))
         
     def on_split_change(self, value):
         """Handle split slider change"""
@@ -573,6 +589,38 @@ class InteractivePreviewPanel(ttk.Frame):
                 fill="red",
                 font=('Arial', 10)
             )
+            
+    def refresh_ui(self):
+        """Refresh UI texts after language change"""
+        # Find and update title label
+        for child in self.winfo_children():
+            if isinstance(child, ttk.Label):
+                child.config(text=t('preview_title'))
+                break
+                
+        # Update controls frame texts
+        for child in self.winfo_children():
+            if isinstance(child, ttk.Frame) and len(child.winfo_children()) > 5:  # Controls frame
+                for control_child in child.winfo_children():
+                    if isinstance(control_child, ttk.Label):
+                        text = control_child.cget('text')
+                        if 'Position' in text or 'position' in text:
+                            control_child.config(text=t('split_position') + ':')
+                        elif 'Zoom' in text or 'zoom' in text:
+                            control_child.config(text=t('zoom') + ':')
+                        elif 'Rotation' in text or 'rotation' in text:
+                            control_child.config(text=t('rotation') + ':')
+                    elif isinstance(control_child, ttk.Button):
+                        text = control_child.cget('text')
+                        if 'Fit' in text or 'Ajuster' in text:
+                            control_child.config(text=t('fit_image'))
+                        elif 'Reset' in text or 'Réinitialiser' in text or '1:1' in text:
+                            control_child.config(text=t('reset_view'))
+                break
+                
+        # Update instructions
+        if hasattr(self, 'instructions_label'):
+            self.instructions_label.config(text=t('preview_instructions'))
 
 class ImageInfoPanel(ttk.Frame):
     """Panel showing detailed image information"""
@@ -586,7 +634,7 @@ class ImageInfoPanel(ttk.Frame):
     def setup_ui(self):
         """Setup the image info panel UI"""
         # Title
-        title_label = ttk.Label(self, text="Informations de l'image", font=('Arial', 12, 'bold'))
+        title_label = ttk.Label(self, text=t('info_title'), font=('Arial', 12, 'bold'))
         title_label.pack(pady=(0, 5))
         
         # Notebook for different info categories
@@ -595,22 +643,22 @@ class ImageInfoPanel(ttk.Frame):
         
         # File info tab
         self.file_frame = ttk.Frame(self.info_notebook)
-        self.info_notebook.add(self.file_frame, text="Fichier")
+        self.info_notebook.add(self.file_frame, text=t('info_tab_file'))
         self.setup_file_info_tab()
         
         # Properties tab
         self.props_frame = ttk.Frame(self.info_notebook)
-        self.info_notebook.add(self.props_frame, text="Propriétés")
+        self.info_notebook.add(self.props_frame, text=t('info_tab_properties'))
         self.setup_properties_tab()
         
         # Analysis tab
         self.analysis_frame = ttk.Frame(self.info_notebook)
-        self.info_notebook.add(self.analysis_frame, text="Analyse")
+        self.info_notebook.add(self.analysis_frame, text=t('info_tab_analysis'))
         self.setup_analysis_tab()
         
         # EXIF tab (for images)
         self.exif_frame = ttk.Frame(self.info_notebook)
-        self.info_notebook.add(self.exif_frame, text="EXIF")
+        self.info_notebook.add(self.exif_frame, text=t('info_tab_exif'))
         self.setup_exif_tab()
         
     def setup_file_info_tab(self):
@@ -852,3 +900,18 @@ class ImageInfoPanel(ttk.Frame):
         self.exif_text.delete(1.0, tk.END)
         self.exif_text.insert(tk.END, f"Erreur: {error_message}")
         self.exif_text.config(state=tk.DISABLED)
+        
+    def refresh_ui(self):
+        """Refresh UI texts after language change"""
+        # Find and update title label
+        for child in self.winfo_children():
+            if isinstance(child, ttk.Label):
+                child.config(text=t('info_title'))
+                break
+        
+        # Update tab names
+        if hasattr(self, 'info_notebook'):
+            self.info_notebook.tab(0, text=t('info_tab_file'))
+            self.info_notebook.tab(1, text=t('info_tab_properties'))
+            self.info_notebook.tab(2, text=t('info_tab_analysis'))
+            self.info_notebook.tab(3, text=t('info_tab_exif'))

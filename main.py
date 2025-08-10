@@ -465,32 +465,58 @@ class ImageVideoProcessorApp:
         self.notebook.tab(1, text=t('tab_operations'))
         self.notebook.tab(2, text=t('tab_info'))
         
-        # Recreate the toolbar to update button texts
+        # Update toolbar button texts (without recreating)
+        self.refresh_toolbar()
+        
+        # Update parameter panel
+        if hasattr(self, 'param_panel'):
+            self.param_panel.refresh_ui()
+            
+        # Update pipeline panel  
+        if hasattr(self, 'pipeline_panel'):
+            self.pipeline_panel.refresh_ui()
+            
+        # Update info panel
+        if hasattr(self, 'info_panel'):
+            self.info_panel.refresh_ui()
+            
+        # Update preview panel
+        if hasattr(self, 'preview_panel'):
+            self.preview_panel.refresh_ui()
+    
+    def refresh_toolbar(self):
+        """Refresh toolbar texts without recreating widgets"""
+        # Find the toolbar frame and update button texts
         for widget in self.root.winfo_children():
             if isinstance(widget, ttk.Frame):
                 for child in widget.winfo_children():
-                    if hasattr(child, 'pack_info') and child.pack_info().get('side') != 'bottom':
-                        # This is likely the toolbar frame
-                        child.destroy()
-                        self.create_toolbar(widget)
+                    if isinstance(child, ttk.Frame) and len(child.winfo_children()) > 5:  # This is likely the toolbar
+                        self.update_toolbar_texts(child)
                         break
                 break
+    
+    def update_toolbar_texts(self, toolbar):
+        """Update toolbar button texts"""
+        button_texts = [
+            t('select_file'), t('select_folder'), t('previous'), t('next'), 
+            None, None, None, t('save_result')  # None for labels and combobox
+        ]
         
-        # Update parameter panel
-        # if hasattr(self, 'param_panel'):
-        #     self.param_panel.refresh_ui()
-            
-        # Update pipeline panel  
-        # if hasattr(self, 'pipeline_panel'):
-        #     self.pipeline_panel.refresh_ui()
-            
-        # Update info panel
-        # if hasattr(self, 'info_panel'):
-        #     self.info_panel.refresh_ui()
-            
-        # Update preview panel
-        # if hasattr(self, 'preview_panel'):
-        #     self.preview_panel.refresh_ui()
+        button_index = 0
+        for child in toolbar.winfo_children():
+            if isinstance(child, ttk.Button):
+                if button_index < len(button_texts) and button_texts[button_index]:
+                    child.config(text=button_texts[button_index])
+                button_index += 1
+            elif isinstance(child, ttk.Label) and hasattr(self, 'file_info_label') and child == self.file_info_label:
+                # Update file info label if no file is loaded
+                current_text = child.cget('text')
+                if 'No files' in current_text or 'Aucun fichier' in current_text:
+                    child.config(text=t('no_files'))
+            elif isinstance(child, ttk.Frame):  # Language selector frame
+                for subchild in child.winfo_children():
+                    if isinstance(subchild, ttk.Label):
+                        subchild.config(text=t('language') + ':')
 
 def main():
     root = tk.Tk()

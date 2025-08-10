@@ -6,11 +6,18 @@
 
 Une application Python Tkinter pour le traitement interactif d'images et de vidéos avec une interface utilisateur intuitive et des fonctionnalités avancées de visualisation.
 
-![Aqualix Interface](https://img.shields.io/badge/Interface-Fran%C3%A7ais-blue)
+![Aqualix Interface](https://img.shields.io/badge/Interface-Fran%C3%A7ais%2FEnglish-blue)
+![Aqualix Language Support](https://img.shields.io/badge/Languages-FR%20%7C%20EN-green)
 
 ## Features
 
 ### Nouvelles fonctionnalités (v1.1.0)
+
+#### Support multilingue 🌍
+- **Interface bilingue** : Français et anglais disponibles
+- **Sélecteur de langue** intégré dans la barre d'outils
+- **Changement instantané** sans redémarrage de l'application
+- **Plus de 200 traductions** couvrant toute l'interface
 
 #### Interface en ligne de commande (CLI)
 - **Traitement par lot sans interface graphique**
@@ -132,6 +139,11 @@ Une application Python Tkinter pour le traitement interactif d'images et de vid�
 6. **Sauvegarder** :
    - Clic sur "Sauvegarder le résultat" pour exporter
    - Pour les vidéos, traitement appliqué à toutes les frames
+
+7. **Changer de langue** :
+   - Sélecteur dans la barre d'outils (fr/en)
+   - Changement instantané de toute l'interface
+   - Préférences sauvegardées automatiquement
 
 ### Interface en ligne de commande (CLI)
 

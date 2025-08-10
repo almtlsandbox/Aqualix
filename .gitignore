@@ -143,3 +143,6 @@ test_images/
 sample_videos/
 output/
 temp/
+
+# User configuration files
+aqualix_config.json
