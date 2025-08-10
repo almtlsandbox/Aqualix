@@ -118,6 +118,8 @@ class LocalizationManager:
             'color_rebalance_step_desc': 'Matrice de transformation 3×3 avec garde-fous anti-magenta',
             'histogram_equalization_step_title': 'Égalisation d\'histogramme (CLAHE)',
             'histogram_equalization_step_desc': 'Amélioration du contraste local',
+            'multiscale_fusion_step_title': 'Fusion Multi-échelles (Ancuti)',
+            'multiscale_fusion_step_desc': 'Fusion robuste de 3 variantes (WB+contraste, WB+netteté, UDCP) pour optimiser le rendu',
             
             # UDCP method
             'udcp_title': 'UDCP (Underwater Dark Channel Prior)',
@@ -306,6 +308,15 @@ class LocalizationManager:
             'param_hist_eq_tile_grid_size_label': 'Taille des tuiles CLAHE',
             'param_hist_eq_tile_grid_size_desc': 'Taille des tuiles pour l\'égalisation adaptative d\'histogramme',
             
+            # Multi-scale Fusion Parameters
+            'param_fusion_laplacian_levels_desc': 'Nombre de niveaux pour la pyramide laplacienne',
+            'param_fusion_contrast_weight_desc': 'Poids pour la mesure de contraste',
+            'param_fusion_saturation_weight_desc': 'Poids pour la mesure de saturation',
+            'param_fusion_exposedness_weight_desc': 'Poids pour la mesure d\'exposition',
+            'param_fusion_sigma_1_desc': 'Écart-type pour le premier filtre gaussien',
+            'param_fusion_sigma_2_desc': 'Écart-type pour le deuxième filtre gaussien',
+            'param_fusion_sigma_3_desc': 'Écart-type pour le troisième filtre gaussien',
+            
             # White balance method names
             'method_gray_world': 'Gray-World',
             'method_white_patch': 'White-Patch', 
@@ -422,6 +433,8 @@ class LocalizationManager:
             'color_rebalance_step_desc': '3×3 transformation matrix with anti-magenta safeguards',
             'histogram_equalization_step_title': 'Histogram Equalization (CLAHE)',
             'histogram_equalization_step_desc': 'Local contrast enhancement',
+            'multiscale_fusion_step_title': 'Multi-scale Fusion (Ancuti)',
+            'multiscale_fusion_step_desc': 'Robust fusion of 3 variants (WB+contrast, WB+sharpness, UDCP) for optimal rendering',
             
             # UDCP method
             'udcp_title': 'UDCP (Underwater Dark Channel Prior)',
@@ -609,6 +622,15 @@ class LocalizationManager:
             'param_hist_eq_clip_limit_desc': 'Threshold for contrast limiting in CLAHE algorithm',
             'param_hist_eq_tile_grid_size_label': 'CLAHE tile size',
             'param_hist_eq_tile_grid_size_desc': 'Tile size for adaptive histogram equalization',
+            
+            # Multi-scale Fusion Parameters
+            'param_fusion_laplacian_levels_desc': 'Number of levels for the Laplacian pyramid',
+            'param_fusion_contrast_weight_desc': 'Weight for contrast measure',
+            'param_fusion_saturation_weight_desc': 'Weight for saturation measure',
+            'param_fusion_exposedness_weight_desc': 'Weight for exposedness measure',
+            'param_fusion_sigma_1_desc': 'Standard deviation for first Gaussian filter',
+            'param_fusion_sigma_2_desc': 'Standard deviation for second Gaussian filter',
+            'param_fusion_sigma_3_desc': 'Standard deviation for third Gaussian filter',
             
             # White balance method names
             'method_gray_world': 'Gray-World',

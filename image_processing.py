@@ -100,6 +100,16 @@ class ImageProcessor:
             'hist_eq_enabled': True,
             'hist_eq_clip_limit': 2.0,
             'hist_eq_tile_grid_size': 8,
+            
+            # Multi-scale fusion parameters (Ancuti method)
+            'multiscale_fusion_enabled': True,
+            'fusion_laplacian_levels': 5,            # Number of Laplacian pyramid levels (3-7)
+            'fusion_contrast_weight': 1.0,          # Weight for contrast measure (0.0-2.0)
+            'fusion_saturation_weight': 1.0,        # Weight for saturation measure (0.0-2.0)
+            'fusion_exposedness_weight': 1.0,       # Weight for well-exposedness measure (0.0-2.0)
+            'fusion_sigma_contrast': 0.2,           # Gaussian sigma for contrast (0.1-0.5)
+            'fusion_sigma_saturation': 0.3,         # Gaussian sigma for saturation (0.1-0.5)
+            'fusion_sigma_exposedness': 0.2,        # Gaussian sigma for exposedness (0.1-0.5)
         }
         
         # Processing pipeline order
@@ -108,7 +118,8 @@ class ImageProcessor:
             'udcp',
             'beer_lambert',
             'color_rebalance',
-            'histogram_equalization'
+            'histogram_equalization',
+            'multiscale_fusion'
         ]
         
     def set_parameter(self, name: str, value: Any):
@@ -190,7 +201,17 @@ class ImageProcessor:
             'hist_eq_enabled': True,
             'hist_eq_clip_limit': 3.0,
             'hist_eq_tile_grid_size': 8,
-            'hist_eq_tile_grid_adaptive': True
+            'hist_eq_tile_grid_adaptive': True,
+            
+            # Multi-scale fusion parameters
+            'multiscale_fusion_enabled': True,
+            'fusion_laplacian_levels': 5,
+            'fusion_contrast_weight': 1.0,
+            'fusion_saturation_weight': 1.0,
+            'fusion_exposedness_weight': 1.0,
+            'fusion_sigma_contrast': 0.2,
+            'fusion_sigma_saturation': 0.3,
+            'fusion_sigma_exposedness': 0.2
         }
     
     def reset_step_parameters(self, step_key: str):
@@ -203,7 +224,8 @@ class ImageProcessor:
             'udcp': ['udcp_'],
             'beer_lambert': ['beer_lambert_'],
             'color_rebalance': ['color_rebalance_'],
-            'histogram_equalization': ['hist_eq_']
+            'histogram_equalization': ['hist_eq_'],
+            'multiscale_fusion': ['multiscale_fusion_', 'fusion_']
         }
         
         if step_key not in step_prefixes:
@@ -230,6 +252,8 @@ class ImageProcessor:
                 result = self.color_rebalance(result)
             elif operation == 'histogram_equalization' and self.parameters['hist_eq_enabled']:
                 result = self.adaptive_histogram_equalization(result)
+            elif operation == 'multiscale_fusion' and self.parameters['multiscale_fusion_enabled']:
+                result = self.multiscale_fusion(image, result)
                 
         return result
     
@@ -261,6 +285,8 @@ class ImageProcessor:
                 processed_preview = self.color_rebalance(processed_preview)
             elif operation == 'histogram_equalization' and self.parameters['hist_eq_enabled']:
                 processed_preview = self.adaptive_histogram_equalization(processed_preview)
+            elif operation == 'multiscale_fusion' and self.parameters['multiscale_fusion_enabled']:
+                processed_preview = self.multiscale_fusion(original_preview, processed_preview)
                 
         return original_preview, processed_preview, scale_factor
     
@@ -996,6 +1022,189 @@ class ImageProcessor:
             return f"Réduction vert: {self.parameters['lake_green_reduction']:.2f}, Magenta: {self.parameters['lake_magenta_strength']:.2f}, Gray-World: {self.parameters['lake_gray_world_influence']:.2f}"
         else:
             return ""
+            
+    def multiscale_fusion(self, original: np.ndarray, processed: np.ndarray) -> np.ndarray:
+        """
+        Multi-scale fusion based on Ancuti method.
+        Fuses three enhancement variants (WB+contrast, WB+sharpening, UDCP) for improved robustness.
+        
+        Args:
+            original: Original image
+            processed: Current processed image (to use as base)
+            
+        Returns:
+            Fused result image
+        """
+        try:
+            # Convert images to float32 for processing
+            original_f = original.astype(np.float32) / 255.0
+            processed_f = processed.astype(np.float32) / 255.0
+            
+            # Generate three enhancement variants
+            variant1 = self._create_wb_contrast_variant(original_f)  # WB + contrast
+            variant2 = self._create_wb_sharp_variant(original_f)     # WB + sharpening  
+            variant3 = self._create_udcp_variant(original_f)        # UDCP variant
+            
+            # Normalize variants to [0,1]
+            variant1 = np.clip(variant1, 0, 1)
+            variant2 = np.clip(variant2, 0, 1)
+            variant3 = np.clip(variant3, 0, 1)
+            
+            # Create Laplacian pyramids for each variant
+            levels = self.parameters['fusion_laplacian_levels']
+            
+            pyr1 = self._build_laplacian_pyramid(variant1, levels)
+            pyr2 = self._build_laplacian_pyramid(variant2, levels)
+            pyr3 = self._build_laplacian_pyramid(variant3, levels)
+            
+            # Compute quality measures for each variant
+            weights1 = self._compute_quality_measures(variant1)
+            weights2 = self._compute_quality_measures(variant2)  
+            weights3 = self._compute_quality_measures(variant3)
+            
+            # Build Gaussian pyramids for weights
+            w_pyr1 = self._build_gaussian_pyramid(weights1, levels)
+            w_pyr2 = self._build_gaussian_pyramid(weights2, levels)
+            w_pyr3 = self._build_gaussian_pyramid(weights3, levels)
+            
+            # Normalize weights at each level
+            fused_pyramid = []
+            for level in range(levels):
+                # Normalize weights
+                total_weight = w_pyr1[level] + w_pyr2[level] + w_pyr3[level] + 1e-12
+                norm_w1 = w_pyr1[level] / total_weight
+                norm_w2 = w_pyr2[level] / total_weight
+                norm_w3 = w_pyr3[level] / total_weight
+                
+                # Fuse pyramids at this level
+                fused_level = (norm_w1[..., np.newaxis] * pyr1[level] + 
+                              norm_w2[..., np.newaxis] * pyr2[level] + 
+                              norm_w3[..., np.newaxis] * pyr3[level])
+                fused_pyramid.append(fused_level)
+            
+            # Reconstruct image from Laplacian pyramid
+            result = self._reconstruct_from_laplacian_pyramid(fused_pyramid)
+            
+            # Convert back to uint8
+            result = np.clip(result * 255, 0, 255).astype(np.uint8)
+            
+            return result
+            
+        except Exception as e:
+            print(f"Multi-scale fusion error: {e}")
+            return processed  # Return original processed image on error
+    
+    def _create_wb_contrast_variant(self, image: np.ndarray) -> np.ndarray:
+        """Create white balance + contrast enhancement variant"""
+        # Apply white balance
+        variant = self._apply_white_balance_to_float(image)
+        
+        # Apply contrast enhancement using CLAHE
+        variant_uint8 = (variant * 255).astype(np.uint8)
+        lab = cv2.cvtColor(variant_uint8, cv2.COLOR_RGB2LAB)
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+        lab[:, :, 0] = clahe.apply(lab[:, :, 0])
+        variant_uint8 = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
+        
+        return variant_uint8.astype(np.float32) / 255.0
+    
+    def _create_wb_sharp_variant(self, image: np.ndarray) -> np.ndarray:
+        """Create white balance + sharpening variant"""
+        # Apply white balance
+        variant = self._apply_white_balance_to_float(image)
+        
+        # Apply unsharp masking for sharpening
+        variant_uint8 = (variant * 255).astype(np.uint8)
+        blurred = cv2.GaussianBlur(variant_uint8, (0, 0), 1.0)
+        sharpened = cv2.addWeighted(variant_uint8, 1.5, blurred, -0.5, 0)
+        
+        return np.clip(sharpened.astype(np.float32) / 255.0, 0, 1)
+    
+    def _create_udcp_variant(self, image: np.ndarray) -> np.ndarray:
+        """Create UDCP-based variant"""
+        # Apply UDCP processing
+        variant_uint8 = (image * 255).astype(np.uint8)
+        variant = self.underwater_dark_channel_prior(variant_uint8)
+        
+        return variant.astype(np.float32) / 255.0
+    
+    def _apply_white_balance_to_float(self, image: np.ndarray) -> np.ndarray:
+        """Apply white balance to float image"""
+        image_uint8 = (image * 255).astype(np.uint8)
+        balanced = self.apply_white_balance(image_uint8)
+        return balanced.astype(np.float32) / 255.0
+    
+    def _build_laplacian_pyramid(self, image: np.ndarray, levels: int) -> List[np.ndarray]:
+        """Build Laplacian pyramid"""
+        gaussian_pyramid = [image]
+        
+        # Build Gaussian pyramid
+        for i in range(levels - 1):
+            gaussian_pyramid.append(cv2.pyrDown(gaussian_pyramid[-1]))
+        
+        # Build Laplacian pyramid
+        laplacian_pyramid = [gaussian_pyramid[-1]]  # Top level is Gaussian
+        
+        for i in range(levels - 1, 0, -1):
+            size = (gaussian_pyramid[i-1].shape[1], gaussian_pyramid[i-1].shape[0])
+            upsampled = cv2.pyrUp(gaussian_pyramid[i], dstsize=size)
+            laplacian = gaussian_pyramid[i-1] - upsampled
+            laplacian_pyramid.insert(0, laplacian)
+        
+        return laplacian_pyramid
+    
+    def _build_gaussian_pyramid(self, image: np.ndarray, levels: int) -> List[np.ndarray]:
+        """Build Gaussian pyramid"""
+        pyramid = [image]
+        for i in range(levels - 1):
+            pyramid.append(cv2.pyrDown(pyramid[-1]))
+        return pyramid
+    
+    def _reconstruct_from_laplacian_pyramid(self, pyramid: List[np.ndarray]) -> np.ndarray:
+        """Reconstruct image from Laplacian pyramid"""
+        result = pyramid[-1]  # Start with top level
+        
+        for i in range(len(pyramid) - 2, -1, -1):
+            size = (pyramid[i].shape[1], pyramid[i].shape[0])
+            result = cv2.pyrUp(result, dstsize=size) + pyramid[i]
+        
+        return result
+    
+    def _compute_quality_measures(self, image: np.ndarray) -> np.ndarray:
+        """Compute quality measures (contrast, saturation, well-exposedness)"""
+        # Convert to grayscale for some measures
+        if len(image.shape) == 3:
+            gray = cv2.cvtColor((image * 255).astype(np.uint8), cv2.COLOR_RGB2GRAY).astype(np.float32) / 255.0
+        else:
+            gray = image
+        
+        # Contrast measure using Laplacian
+        laplacian = cv2.Laplacian(gray, cv2.CV_32F)
+        contrast = np.abs(laplacian)
+        
+        # Saturation measure
+        if len(image.shape) == 3:
+            saturation = np.std(image, axis=2)
+        else:
+            saturation = np.zeros_like(gray)
+        
+        # Well-exposedness measure (Gaussian around 0.5)
+        exposedness = np.exp(-0.5 * ((gray - 0.5) / self.parameters['fusion_sigma_exposedness']) ** 2)
+        
+        # Apply Gaussian smoothing to measures
+        contrast = cv2.GaussianBlur(contrast, (5, 5), self.parameters['fusion_sigma_contrast'])
+        saturation = cv2.GaussianBlur(saturation, (5, 5), self.parameters['fusion_sigma_saturation'])
+        exposedness = cv2.GaussianBlur(exposedness, (5, 5), self.parameters['fusion_sigma_exposedness'])
+        
+        # Combine measures with weights
+        weight = (contrast ** self.parameters['fusion_contrast_weight'] * 
+                 saturation ** self.parameters['fusion_saturation_weight'] *
+                 exposedness ** self.parameters['fusion_exposedness_weight'])
+        
+        # Avoid division by zero
+        weight = weight + 1e-12
+        
+        return weight
         
     def get_parameter_info(self) -> Dict[str, Dict[str, Any]]:
         """Get parameter information for UI generation"""
@@ -1361,5 +1570,63 @@ class ImageProcessor:
                 'min': 4,
                 'max': 16,
                 'step': 2
+            },
+            
+            # Multi-scale fusion parameters
+            'fusion_laplacian_levels': {
+                'type': 'int',
+                'label': t('param_fusion_laplacian_levels_label'),
+                'description': t('param_fusion_laplacian_levels_desc'),
+                'min': 3,
+                'max': 7,
+                'step': 1
+            },
+            'fusion_contrast_weight': {
+                'type': 'float',
+                'label': t('param_fusion_contrast_weight_label'),
+                'description': t('param_fusion_contrast_weight_desc'),
+                'min': 0.0,
+                'max': 2.0,
+                'step': 0.1
+            },
+            'fusion_saturation_weight': {
+                'type': 'float', 
+                'label': t('param_fusion_saturation_weight_label'),
+                'description': t('param_fusion_saturation_weight_desc'),
+                'min': 0.0,
+                'max': 2.0,
+                'step': 0.1
+            },
+            'fusion_exposedness_weight': {
+                'type': 'float',
+                'label': t('param_fusion_exposedness_weight_label'),
+                'description': t('param_fusion_exposedness_weight_desc'),
+                'min': 0.0,
+                'max': 2.0,
+                'step': 0.1
+            },
+            'fusion_sigma_contrast': {
+                'type': 'float',
+                'label': t('param_fusion_sigma_contrast_label'),
+                'description': t('param_fusion_sigma_contrast_desc'),
+                'min': 0.1,
+                'max': 0.5,
+                'step': 0.05
+            },
+            'fusion_sigma_saturation': {
+                'type': 'float',
+                'label': t('param_fusion_sigma_saturation_label'),
+                'description': t('param_fusion_sigma_saturation_desc'),
+                'min': 0.1,
+                'max': 0.5,
+                'step': 0.05
+            },
+            'fusion_sigma_exposedness': {
+                'type': 'float',
+                'label': t('param_fusion_sigma_exposedness_label'),
+                'description': t('param_fusion_sigma_exposedness_desc'),
+                'min': 0.1,
+                'max': 0.5,
+                'step': 0.05
             }
         }
