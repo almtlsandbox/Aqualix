@@ -93,8 +93,8 @@ class ImageProcessor:
             'color_rebalance_br': 0.0,              # Blue to Red coefficient (-0.5-0.5)
             'color_rebalance_bg': 0.0,              # Blue to Green coefficient (-0.5-0.5)
             'color_rebalance_bb': 1.0,              # Blue to Blue coefficient (0.5-2.0)
-            'color_rebalance_saturation_limit': 0.8, # Saturation clamp to avoid magenta (0.3-1.0)
-            'color_rebalance_preserve_luminance': True, # Preserve luminance during rebalancing
+            'color_rebalance_saturation_limit': 1.0, # Saturation clamp to avoid magenta (0.3-1.0) - 1.0 = no limit
+            'color_rebalance_preserve_luminance': False, # Preserve luminance during rebalancing - disabled by default
             
             # Histogram equalization parameters
             'hist_eq_enabled': True,
@@ -747,7 +747,7 @@ class ImageProcessor:
             # Apply saturation limiting to prevent magenta artifacts
             if saturation_limit < 1.0:
                 # Convert to HSV for saturation control
-                result_hsv = cv2.cvtColor(result, cv2.COLOR_RGB2HSV)
+                result_hsv = cv2.cvtColor(np.clip(result, 0, 1), cv2.COLOR_RGB2HSV)
                 
                 # Limit saturation channel
                 result_hsv[:, :, 1] = np.clip(result_hsv[:, :, 1], 0, saturation_limit)
@@ -763,7 +763,7 @@ class ImageProcessor:
                 # Avoid division by zero
                 luminance_ratio = np.divide(original_luminance, new_luminance, 
                                           out=np.ones_like(original_luminance), 
-                                          where=new_luminance != 0)
+                                          where=new_luminance > 1e-6)  # More robust threshold
                 
                 # Apply luminance correction to each channel
                 for i in range(3):
