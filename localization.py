@@ -270,6 +270,13 @@ class LocalizationManager:
             'param_hist_eq_tile_grid_size_label': 'Taille des tuiles CLAHE',
             'param_hist_eq_tile_grid_size_desc': 'Taille des tuiles pour l\'égalisation adaptative d\'histogramme',
             
+            # White balance method names
+            'method_gray_world': 'Gray-World',
+            'method_white_patch': 'White-Patch', 
+            'method_shades_of_gray': 'Shades-of-Gray',
+            'method_grey_edge': 'Grey-Edge',
+            'method_lake_green_water': 'Eau Verte (Lac)',
+            
             # Language
             'language': 'Langue',
             'french': 'Français',
@@ -501,6 +508,13 @@ class LocalizationManager:
             'param_hist_eq_clip_limit_desc': 'Threshold for contrast limiting in CLAHE algorithm',
             'param_hist_eq_tile_grid_size_label': 'CLAHE tile size',
             'param_hist_eq_tile_grid_size_desc': 'Tile size for adaptive histogram equalization',
+            
+            # White balance method names
+            'method_gray_world': 'Gray-World',
+            'method_white_patch': 'White-Patch',
+            'method_shades_of_gray': 'Shades-of-Gray',
+            'method_grey_edge': 'Grey-Edge',
+            'method_lake_green_water': 'Lake Green Water',
             
             # Language
             'language': 'Language',

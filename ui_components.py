@@ -34,18 +34,18 @@ class ParameterPanel(ttk.Frame):
         # Scrollable frame for parameters
         canvas = tk.Canvas(self, height=500)
         scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
-        scrollable_frame = ttk.Frame(canvas)
+        self.scrollable_frame = ttk.Frame(canvas)  # Store reference for refresh_ui
         
-        scrollable_frame.bind(
+        self.scrollable_frame.bind(
             "<Configure>",
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
         
-        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+        canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
         
         # Create parameter widgets
-        self.create_step_based_widgets(scrollable_frame)
+        self.create_step_based_widgets(self.scrollable_frame)
         
         # Initialize parameter visibility
         self.update_parameter_visibility()
@@ -435,6 +435,22 @@ class ParameterPanel(ttk.Frame):
             if isinstance(child, ttk.Label):
                 child.config(text=t('parameters_title'))
                 break
+        
+        # Clear existing parameter widgets
+        for widget in self.scrollable_frame.winfo_children():
+            widget.destroy()
+        
+        # Reset widget tracking dictionaries
+        self.param_widgets.clear()
+        self.step_frames.clear()
+        self.step_expanded.clear()
+        self.frame_order.clear()
+        
+        # Recreate parameter widgets with new translations
+        self.create_step_based_widgets(self.scrollable_frame)
+        
+        # Restore parameter visibility
+        self.update_parameter_visibility()
 
 class PipelinePanel(ttk.Frame):
     """Panel showing the processing pipeline description"""

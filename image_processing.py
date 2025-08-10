@@ -795,11 +795,11 @@ class ImageProcessor:
                 'label': t('param_white_balance_method_label'),
                 'description': t('param_white_balance_method_desc'),
                 'choices': [
-                    ('gray_world', 'Gray-World'),
-                    ('white_patch', 'White-Patch'),
-                    ('shades_of_gray', 'Shades-of-Gray'),
-                    ('grey_edge', 'Grey-Edge'),
-                    ('lake_green_water', 'Eau Verte (Lac)')
+                    ('gray_world', t('method_gray_world')),
+                    ('white_patch', t('method_white_patch')),
+                    ('shades_of_gray', t('method_shades_of_gray')),
+                    ('grey_edge', t('method_grey_edge')),
+                    ('lake_green_water', t('method_lake_green_water'))
                 ]
             },
             'white_balance_enabled': {
