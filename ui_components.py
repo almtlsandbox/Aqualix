@@ -19,6 +19,7 @@ class ParameterPanel(ttk.Frame):
         self.processor = processor
         self.update_callback = update_callback
         self.param_widgets = {}
+        self.frame_order = []  # Keep track of frame order for proper re-packing
         
         self.setup_ui()
         
@@ -43,6 +44,9 @@ class ParameterPanel(ttk.Frame):
         
         # Create parameter widgets
         self.create_parameter_widgets(scrollable_frame)
+        
+        # Initialize parameter visibility
+        self.update_parameter_visibility()
         
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
@@ -77,6 +81,7 @@ class ParameterPanel(ttk.Frame):
             
             # Store frame reference for visibility control
             self.param_widgets[f"{param_name}_frame"] = frame
+            self.frame_order.append((param_name, frame))  # Track order
                 
     def create_boolean_widget(self, parent, param_name: str, info: Dict[str, Any]):
         """Create a boolean parameter widget"""
@@ -201,22 +206,33 @@ class ParameterPanel(ttk.Frame):
         param_info = self.processor.get_parameter_info()
         current_method = self.processor.get_parameter('white_balance_method')
         
+        # First, forget all conditional frames to reset their packing order
         for param_name, info in param_info.items():
             if 'visible_when' in info:
-                frame = self.param_widgets.get(f"{param_name}_frame")
+                frame_key = f"{param_name}_frame"
+                frame = self.param_widgets.get(frame_key)
                 if frame:
-                    condition = info['visible_when']
-                    show = True
-                    for condition_param, condition_value in condition.items():
-                        current_value = self.processor.get_parameter(condition_param)
-                        if current_value != condition_value:
-                            show = False
-                            break
-                    
-                    if show:
-                        frame.pack(fill=tk.X, padx=5, pady=2)
-                    else:
-                        frame.pack_forget()
+                    frame.pack_forget()
+        
+        # Then, re-pack frames in the correct order based on visibility
+        for param_name, frame in self.frame_order:
+            info = param_info.get(param_name, {})
+            
+            if 'visible_when' in info:
+                condition = info['visible_when']
+                show = True
+                for condition_param, condition_value in condition.items():
+                    current_value = self.processor.get_parameter(condition_param)
+                    if current_value != condition_value:
+                        show = False
+                        break
+                
+                if show:
+                    frame.pack(fill=tk.X, padx=5, pady=2)
+            else:
+                # Non-conditional parameters should always be visible
+                if frame.winfo_manager() == '':  # Not packed
+                    frame.pack(fill=tk.X, padx=5, pady=2)
         
     def refresh_ui(self):
         """Refresh UI texts after language change"""
