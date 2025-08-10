@@ -1,0 +1,420 @@
+"""
+Image and Video Processing Application
+A Tkinter-based GUI application for processing images and videos with various filters and corrections.
+"""
+
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
+import cv2
+import numpy as np
+import os
+from PIL import Image, ImageTk
+import threading
+from pathlib import Path
+
+from image_processing import ImageProcessor
+from ui_components import ParameterPanel, PipelinePanel, InteractivePreviewPanel
+
+class ImageVideoProcessorApp:
+    def __init__(self, root):
+        self.root = root
+        self.root.title("Image and Video Processor")
+        self.root.geometry("1200x800")
+        
+        # Initialize variables
+        self.current_file = None
+        self.files_list = []
+        self.current_index = 0
+        self.original_image = None
+        self.processed_image = None
+        self.video_capture = None
+        self.current_frame = 0
+        self.total_frames = 0
+        
+        # Initialize image processor
+        self.processor = ImageProcessor()
+        
+        # Setup UI
+        self.setup_ui()
+        
+    def setup_ui(self):
+        """Setup the main UI components"""
+        # Main container
+        main_frame = ttk.Frame(self.root)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        # Top toolbar
+        self.create_toolbar(main_frame)
+        
+        # Main content area
+        content_frame = ttk.Frame(main_frame)
+        content_frame.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
+        
+        # Left panel - Parameters and Pipeline in tabs
+        left_panel = ttk.Frame(content_frame)
+        left_panel.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
+        
+        # Create notebook for tabs
+        self.notebook = ttk.Notebook(left_panel)
+        self.notebook.pack(fill=tk.BOTH, expand=True)
+        
+        # Parameters tab
+        params_frame = ttk.Frame(self.notebook)
+        self.notebook.add(params_frame, text="Paramètres")
+        
+        # Parameter panel
+        self.param_panel = ParameterPanel(params_frame, self.processor, self.update_preview)
+        self.param_panel.pack(fill=tk.BOTH, expand=True)
+        
+        # Pipeline tab
+        pipeline_frame = ttk.Frame(self.notebook)
+        self.notebook.add(pipeline_frame, text="Opérations")
+        
+        # Pipeline panel
+        self.pipeline_panel = PipelinePanel(pipeline_frame)
+        self.pipeline_panel.pack(fill=tk.BOTH, expand=True)
+        
+        # Right panel - Preview
+        right_panel = ttk.Frame(content_frame)
+        right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
+        
+        # Preview panel
+        self.preview_panel = InteractivePreviewPanel(right_panel)
+        self.preview_panel.pack(fill=tk.BOTH, expand=True)
+        
+        # Video controls
+        self.create_video_controls(right_panel)
+        
+    def create_toolbar(self, parent):
+        """Create the top toolbar with file operations and navigation"""
+        toolbar = ttk.Frame(parent)
+        toolbar.pack(fill=tk.X, pady=(0, 5))
+        
+        # File operations
+        ttk.Button(toolbar, text="Select File", command=self.select_file).pack(side=tk.LEFT, padx=(0, 5))
+        ttk.Button(toolbar, text="Select Folder", command=self.select_folder).pack(side=tk.LEFT, padx=(0, 5))
+        
+        # Navigation
+        ttk.Button(toolbar, text="Previous", command=self.previous_file).pack(side=tk.LEFT, padx=(10, 2))
+        ttk.Button(toolbar, text="Next", command=self.next_file).pack(side=tk.LEFT, padx=(2, 5))
+        
+        # File info
+        self.file_info_label = ttk.Label(toolbar, text="No file selected")
+        self.file_info_label.pack(side=tk.LEFT, padx=(10, 0))
+        
+        # Save button
+        ttk.Button(toolbar, text="Save Result", command=self.save_result).pack(side=tk.RIGHT)
+        
+    def create_video_controls(self, parent):
+        """Create video-specific controls"""
+        self.video_frame = ttk.Frame(parent)
+        self.video_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        # Frame slider
+        ttk.Label(self.video_frame, text="Frame:").pack(side=tk.LEFT)
+        self.frame_var = tk.IntVar()
+        self.frame_slider = ttk.Scale(
+            self.video_frame, 
+            from_=0, 
+            to=100, 
+            orient=tk.HORIZONTAL, 
+            variable=self.frame_var,
+            command=self.on_frame_change
+        )
+        self.frame_slider.pack(side=tk.LEFT, fill=tk.X, expand=True, padx=(5, 0))
+        
+        # Frame info
+        self.frame_info_label = ttk.Label(self.video_frame, text="0/0")
+        self.frame_info_label.pack(side=tk.RIGHT, padx=(5, 0))
+        
+        # Initially hide video controls
+        self.video_frame.pack_forget()
+        
+    def select_file(self):
+        """Select a single file"""
+        file_path = filedialog.askopenfilename(
+            title="Select Image or Video",
+            filetypes=[
+                ("All supported", "*.jpg *.jpeg *.png *.bmp *.tiff *.mp4 *.avi *.mov *.mkv"),
+                ("Images", "*.jpg *.jpeg *.png *.bmp *.tiff"),
+                ("Videos", "*.mp4 *.avi *.mov *.mkv"),
+                ("All files", "*.*")
+            ]
+        )
+        
+        if file_path:
+            self.files_list = [file_path]
+            self.current_index = 0
+            self.load_current_file()
+            
+    def select_folder(self):
+        """Select a folder containing images/videos"""
+        folder_path = filedialog.askdirectory(title="Select Folder")
+        
+        if folder_path:
+            # Get all supported files from the folder
+            supported_extensions = {'.jpg', '.jpeg', '.png', '.bmp', '.tiff', '.mp4', '.avi', '.mov', '.mkv'}
+            self.files_list = []
+            
+            for file_path in Path(folder_path).iterdir():
+                if file_path.suffix.lower() in supported_extensions:
+                    self.files_list.append(str(file_path))
+                    
+            if self.files_list:
+                self.files_list.sort()
+                self.current_index = 0
+                self.load_current_file()
+            else:
+                messagebox.showwarning("Warning", "No supported files found in the selected folder.")
+                
+    def previous_file(self):
+        """Navigate to previous file"""
+        if self.files_list and self.current_index > 0:
+            self.current_index -= 1
+            self.load_current_file()
+            
+    def next_file(self):
+        """Navigate to next file"""
+        if self.files_list and self.current_index < len(self.files_list) - 1:
+            self.current_index += 1
+            self.load_current_file()
+            
+    def load_current_file(self):
+        """Load the current file from the files list"""
+        if not self.files_list or self.current_index >= len(self.files_list):
+            return
+            
+        self.current_file = self.files_list[self.current_index]
+        file_name = os.path.basename(self.current_file)
+        
+        # Update file info
+        self.file_info_label.config(text=f"{file_name} ({self.current_index + 1}/{len(self.files_list)})")
+        
+        # Check if it's a video file
+        video_extensions = {'.mp4', '.avi', '.mov', '.mkv'}
+        is_video = Path(self.current_file).suffix.lower() in video_extensions
+        
+        if is_video:
+            self.load_video()
+        else:
+            self.load_image()
+            
+    def load_image(self):
+        """Load an image file"""
+        # Hide video controls
+        self.video_frame.pack_forget()
+        
+        try:
+            # Load image using OpenCV
+            self.original_image = cv2.imread(self.current_file)
+            if self.original_image is None:
+                raise ValueError("Could not load image")
+                
+            # Convert BGR to RGB for display
+            self.original_image = cv2.cvtColor(self.original_image, cv2.COLOR_BGR2RGB)
+            
+            # Update preview
+            self.update_preview()
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not load image: {str(e)}")
+            
+    def load_video(self):
+        """Load a video file"""
+        # Show video controls
+        self.video_frame.pack(fill=tk.X, pady=(5, 0))
+        
+        try:
+            # Release previous video capture if exists
+            if self.video_capture:
+                self.video_capture.release()
+                
+            self.video_capture = cv2.VideoCapture(self.current_file)
+            self.total_frames = int(self.video_capture.get(cv2.CAP_PROP_FRAME_COUNT))
+            
+            # Setup frame slider
+            self.frame_slider.configure(to=self.total_frames - 1)
+            self.frame_var.set(0)
+            self.current_frame = 0
+            
+            # Load first frame
+            self.load_video_frame(0)
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not load video: {str(e)}")
+            
+    def load_video_frame(self, frame_number):
+        """Load a specific frame from the video"""
+        if not self.video_capture:
+            return
+            
+        try:
+            self.video_capture.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
+            ret, frame = self.video_capture.read()
+            
+            if ret:
+                # Convert BGR to RGB for display
+                self.original_image = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                self.current_frame = frame_number
+                
+                # Update frame info
+                self.frame_info_label.config(text=f"{frame_number + 1}/{self.total_frames}")
+                
+                # Update preview
+                self.update_preview()
+            else:
+                messagebox.showerror("Error", "Could not read video frame")
+                
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not load video frame: {str(e)}")
+            
+    def on_frame_change(self, value):
+        """Handle frame slider change"""
+        frame_number = int(float(value))
+        if frame_number != self.current_frame:
+            self.load_video_frame(frame_number)
+            
+    def update_preview(self):
+        """Update the preview with processed image"""
+        if self.original_image is None:
+            return
+            
+        try:
+            # Process image
+            self.processed_image = self.processor.process_image(self.original_image.copy())
+            
+            # Update preview panel
+            self.preview_panel.update_images(self.original_image, self.processed_image)
+            
+            # Update pipeline description
+            self.pipeline_panel.update_pipeline(self.processor.get_pipeline_description())
+            
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not process image: {str(e)}")
+            
+    def save_result(self):
+        """Save the processed result"""
+        if self.processed_image is None:
+            messagebox.showwarning("Warning", "No processed image to save")
+            return
+            
+        # Check if it's a video
+        if self.video_capture:
+            self.save_video()
+        else:
+            self.save_image()
+            
+    def save_image(self):
+        """Save processed image"""
+        file_path = filedialog.asksaveasfilename(
+            title="Save Processed Image",
+            defaultextension=".jpg",
+            filetypes=[
+                ("JPEG", "*.jpg"),
+                ("PNG", "*.png"),
+                ("TIFF", "*.tiff"),
+                ("BMP", "*.bmp"),
+                ("All files", "*.*")
+            ]
+        )
+        
+        if file_path:
+            try:
+                # Convert RGB to BGR for saving
+                image_bgr = cv2.cvtColor(self.processed_image, cv2.COLOR_RGB2BGR)
+                cv2.imwrite(file_path, image_bgr)
+                messagebox.showinfo("Success", "Image saved successfully!")
+            except Exception as e:
+                messagebox.showerror("Error", f"Could not save image: {str(e)}")
+                
+    def save_video(self):
+        """Save processed video"""
+        file_path = filedialog.asksaveasfilename(
+            title="Save Processed Video",
+            defaultextension=".mp4",
+            filetypes=[
+                ("MP4", "*.mp4"),
+                ("AVI", "*.avi"),
+                ("MOV", "*.mov"),
+                ("All files", "*.*")
+            ]
+        )
+        
+        if file_path:
+            # Show progress dialog
+            progress_window = tk.Toplevel(self.root)
+            progress_window.title("Processing Video")
+            progress_window.geometry("400x100")
+            progress_window.transient(self.root)
+            progress_window.grab_set()
+            
+            progress_label = ttk.Label(progress_window, text="Processing video frames...")
+            progress_label.pack(pady=10)
+            
+            progress_bar = ttk.Progressbar(progress_window, mode='determinate', maximum=self.total_frames)
+            progress_bar.pack(fill=tk.X, padx=20, pady=10)
+            
+            # Process video in a separate thread
+            def process_video():
+                try:
+                    # Get video properties
+                    fps = int(self.video_capture.get(cv2.CAP_PROP_FPS))
+                    width = int(self.video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
+                    height = int(self.video_capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
+                    
+                    # Create video writer
+                    fourcc = cv2.VideoWriter_fourcc(*'mp4v')
+                    out = cv2.VideoWriter(file_path, fourcc, fps, (width, height))
+                    
+                    # Process each frame
+                    self.video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
+                    
+                    for frame_num in range(self.total_frames):
+                        ret, frame = self.video_capture.read()
+                        if not ret:
+                            break
+                            
+                        # Convert BGR to RGB
+                        frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+                        
+                        # Process frame
+                        processed_frame = self.processor.process_image(frame_rgb)
+                        
+                        # Convert back to BGR and write
+                        processed_bgr = cv2.cvtColor(processed_frame, cv2.COLOR_RGB2BGR)
+                        out.write(processed_bgr)
+                        
+                        # Update progress
+                        self.root.after(0, lambda: progress_bar.configure(value=frame_num + 1))
+                        
+                    out.release()
+                    
+                    # Close progress window and show success message
+                    self.root.after(0, lambda: [
+                        progress_window.destroy(),
+                        messagebox.showinfo("Success", "Video saved successfully!")
+                    ])
+                    
+                except Exception as e:
+                    self.root.after(0, lambda: [
+                        progress_window.destroy(),
+                        messagebox.showerror("Error", f"Could not save video: {str(e)}")
+                    ])
+                    
+            # Start processing thread
+            thread = threading.Thread(target=process_video)
+            thread.daemon = True
+            thread.start()
+            
+    def __del__(self):
+        """Cleanup resources"""
+        if self.video_capture:
+            self.video_capture.release()
+
+def main():
+    root = tk.Tk()
+    app = ImageVideoProcessorApp(root)
+    root.mainloop()
+
+if __name__ == "__main__":
+    main()
