@@ -184,7 +184,7 @@ class ImageProcessor:
             
             # Beer-Lambert correction parameters
             'beer_lambert_enabled': True,
-            'beer_lambert_depth_factor': 10.0,
+            'beer_lambert_depth_factor': 0.1,
             'beer_lambert_red_coeff': 0.6,
             'beer_lambert_green_coeff': 0.3,
             'beer_lambert_blue_coeff': 0.1,
