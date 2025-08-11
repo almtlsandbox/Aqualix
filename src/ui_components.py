@@ -554,9 +554,15 @@ class ParameterPanel(ttk.Frame):
     
     def on_auto_tune_change(self, step_key: str, enabled: bool):
         """Handle auto-tune checkbox state change"""
-        # Store the auto-tune state for this step
-        # The actual auto-tuning will happen during processing
         print(f"Auto-tune for {step_key}: {'enabled' if enabled else 'disabled'}")
+        
+        # If auto-tune is enabled, immediately perform auto-tuning
+        if enabled:
+            self._perform_auto_tune_step(step_key)
+        
+        # Trigger preview update to reflect any parameter changes
+        if self.update_callback:
+            self.update_callback()
     
     def is_auto_tune_enabled(self, step_key: str) -> bool:
         """Check if auto-tune is enabled for a specific step"""
