@@ -109,10 +109,23 @@ class ParameterPanel(ttk.Frame):
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         
-        # Bind mousewheel to canvas
+        # Improved mousewheel binding - bind to canvas and frame, not globally
         def _on_mousewheel(event):
             canvas.yview_scroll(int(-1*(event.delta/120)), "units")
-        canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
+        # Bind mousewheel to canvas and scrollable_frame for better responsiveness
+        canvas.bind("<MouseWheel>", _on_mousewheel)
+        self.scrollable_frame.bind("<MouseWheel>", _on_mousewheel)
+        
+        # Also bind to Enter/Leave events to enable/disable scrolling
+        def _bind_mousewheel(event):
+            canvas.bind_all("<MouseWheel>", _on_mousewheel)
+        
+        def _unbind_mousewheel(event):
+            canvas.unbind_all("<MouseWheel>")
+        
+        canvas.bind('<Enter>', _bind_mousewheel)
+        canvas.bind('<Leave>', _unbind_mousewheel)
     
     def get_processing_steps(self):
         """Get processing steps with their parameters organized by pipeline order"""

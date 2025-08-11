@@ -1032,6 +1032,16 @@ class ImageProcessor:
                                 f'Taille des tuiles: {self.parameters["hist_eq_tile_grid_size"]}x{self.parameters["hist_eq_tile_grid_size"]}'
                 })
                 
+            elif operation == 'multiscale_fusion' and self.parameters['multiscale_fusion_enabled']:
+                pipeline_steps.append({
+                    'name': t('multiscale_fusion_step_title'),
+                    'description': t('operation_multiscale_fusion_desc'),
+                    'parameters': f'Niveaux Laplaciens: {self.parameters["fusion_laplacian_levels"]}, '
+                                f'Poids Contraste: {self.parameters["fusion_contrast_weight"]:.1f}, '
+                                f'Poids Saturation: {self.parameters["fusion_saturation_weight"]:.1f}, '
+                                f'Poids Exposition: {self.parameters["fusion_exposedness_weight"]:.1f}'
+                })
+                
         if not pipeline_steps:
             pipeline_steps.append({
                 'name': t('no_operations'),
@@ -2057,15 +2067,15 @@ class ImageProcessor:
                 optimized_params['fusion_exposedness_weight'] = 1.0
             
             # Sigma parameters based on image characteristics
-            # Smaller sigma for more detailed images
+            # Smaller sigma for more detailed images to preserve fine features
             if edge_density > 0.08:
-                optimized_params['fusion_sigma_1'] = 0.15
-                optimized_params['fusion_sigma_2'] = 0.20
-                optimized_params['fusion_sigma_3'] = 0.15
+                optimized_params['fusion_sigma_contrast'] = 0.15
+                optimized_params['fusion_sigma_saturation'] = 0.20
+                optimized_params['fusion_sigma_exposedness'] = 0.15
             else:
-                optimized_params['fusion_sigma_1'] = 0.20
-                optimized_params['fusion_sigma_2'] = 0.30
-                optimized_params['fusion_sigma_3'] = 0.20
+                optimized_params['fusion_sigma_contrast'] = 0.20
+                optimized_params['fusion_sigma_saturation'] = 0.30
+                optimized_params['fusion_sigma_exposedness'] = 0.20
             
             return optimized_params
             
@@ -2216,14 +2226,14 @@ class ImageProcessor:
             # 4. Paramètres optimisés
             optimized_params = {}
             
-            # Omega adaptatif basé sur analyse spectrale
-            base_omega = 0.85  # Nouveau défaut littérature-basé (Drews)
+            # Omega adaptatif basé sur analyse spectrale - Corrigé pour être moins agressif
+            base_omega = 0.75  # Réduit de 0.85 à 0.75 pour meilleur équilibre visuel
             if blue_red_ratio > 1.4:  # Eau très bleue - forte atténuation rouge
-                optimized_params['omega'] = min(0.95, base_omega + 0.1)
+                optimized_params['omega'] = min(0.85, base_omega + 0.1)  # Max réduit de 0.95 à 0.85
             elif blue_red_ratio < 0.8:  # Eau verte/trouble - moins d'atténuation
-                optimized_params['omega'] = max(0.7, base_omega - 0.15)
-            else:  # Eau claire normale
-                optimized_params['omega'] = base_omega
+                optimized_params['omega'] = max(0.6, base_omega - 0.15)  # Min réduit de 0.7 à 0.6
+            else:  # Eau claire normale - correspondant à votre observation 0.70
+                optimized_params['omega'] = 0.7  # Fixé à 0.7 selon retour utilisateur
             
             # t0 basé sur estimation de profondeur
             base_t0 = 0.15  # Nouveau défaut littérature-basé

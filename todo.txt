@@ -1,0 +1,27 @@
+- verifier que la sauvegarde des images est faite avec une compression JPEG lossless
+
+✅ UDCP: le facteur Omega semble trop aggressif. Par exemple l'autotune donne 0.95 sur une image qui parait mieux avec un coef de 0.70. Pourquoi? On dirait que Autotune de UDCP ne modifie pas ce parametre. - CORRIGÉ
+   → Omega base réduit de 0.85 à 0.75
+   → Eau claire normale: fixé à 0.70 (selon retour utilisateur)  
+   → Eau très bleue: max réduit à 0.85 (au lieu de 0.95)
+   → Eau trouble: min réduit à 0.60 (au lieu de 0.70)
+
+- Je voudrais avoir, dans la section egalisation, la possibilité de choisir une methode alternative, a savoir une egalisation d'histogramme globale
+
+✅ pour fusion, auto-tune ne semble jamais modifier les parametres saturation et exposedness - CORRIGÉ
+   → Noms de paramètres corrigés dans _auto_tune_multiscale_fusion()
+   → fusion_sigma_1/2/3 → fusion_sigma_contrast/saturation/exposedness
+   → Auto-tune modifie maintenant saturation_weight et exposedness_weight
+   → Basé sur analyse qualité image (saturation faible → poids élevé)
+
+✅ lorsque je suis dans la fenetre des parametres, le scroll up/down de la souris ne marche pas. Il faut etre au dessus du scroll vertical dans la fenetre. - CORRIGÉ
+   → Bindings scroll souris améliorés
+   → Canvas binding direct + Enter/Leave pour activation/désactivation
+   → Plus de conflit avec bind_all global
+   → Scroll fonctionne maintenant sur toute la zone paramètres
+
+✅ Le tabs Operations: le texte ne semble pas s'updaté avec les options cochees - par exemple rien sur la fusion - CORRIGÉ
+   → Multiscale fusion ajoutée à get_pipeline_description()
+   → Affichage paramètres fusion: Niveaux Laplaciens, Poids (Contraste/Saturation/Exposition)
+   → Traductions ajoutées: operation_multiscale_fusion_desc (FR/EN)
+   → Tab Opérations montre maintenant toutes les étapes activées

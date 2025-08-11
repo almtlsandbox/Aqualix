@@ -133,6 +133,7 @@ class LocalizationManager:
             
             'operation_he': 'Égalisation d\'histogramme adaptatif',
             'operation_he_desc': 'Améliore le contraste local en utilisant CLAHE (Contrast Limited Adaptive Histogram Equalization).',
+            'operation_multiscale_fusion_desc': 'Fusionne intelligemment 3 variantes d\'amélioration (WB+contraste, WB+netteté, UDCP) en utilisant la méthode d\'Ancuti pour un rendu optimal.',
             
             # Interactive preview
             'split_position': 'Division',
@@ -454,6 +455,7 @@ class LocalizationManager:
             
             'operation_he': 'Adaptive Histogram Equalization',
             'operation_he_desc': 'Enhances local contrast using CLAHE (Contrast Limited Adaptive Histogram Equalization).',
+            'operation_multiscale_fusion_desc': 'Intelligently fuses 3 enhancement variants (WB+contrast, WB+sharpness, UDCP) using Ancuti method for optimal rendering.',
             
             # Interactive preview
             'split_position': 'Split',
