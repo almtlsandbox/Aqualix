@@ -6,7 +6,7 @@ Contains image processing algorithms and pipeline management.
 import cv2
 import numpy as np
 from typing import Dict, Any, List, Tuple
-from localization import t
+from .localization import t
 
 def create_preview_image(image: np.ndarray, max_size: int = 1024) -> Tuple[np.ndarray, float]:
     """
