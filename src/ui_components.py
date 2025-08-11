@@ -543,6 +543,13 @@ class ParameterPanel(ttk.Frame):
             # Reset parameters in the processor
             self.processor.reset_step_parameters(step_key)
             
+            # Uncheck the auto-tune checkbox for this step
+            if step_key in self.step_frames:
+                auto_tune_var = self.step_frames[step_key].get('auto_tune_var')
+                if auto_tune_var:
+                    auto_tune_var.set(False)
+                    print(f"Auto-tune disabled for {step_key}")
+            
             # Update UI widgets to reflect the new values
             self.update_ui_from_parameters()
             
@@ -610,6 +617,13 @@ class ParameterPanel(ttk.Frame):
             # Reset each parameter to its default value
             for param_name, default_value in default_params.items():
                 self.processor.set_parameter(param_name, default_value)
+            
+            # Uncheck all auto-tune checkboxes
+            for step_key, step_info in self.step_frames.items():
+                auto_tune_var = step_info.get('auto_tune_var')
+                if auto_tune_var:
+                    auto_tune_var.set(False)
+            print("All auto-tune checkboxes disabled")
             
             # Update UI widgets to reflect the new values
             self.update_ui_from_parameters()
