@@ -250,6 +250,15 @@ class ParameterPanel(ttk.Frame):
         )
         auto_tune_checkbox.pack(side=tk.LEFT, padx=(0, 5))
         
+        # Manual Auto-Tune button
+        manual_auto_tune_button = ttk.Button(
+            buttons_frame,
+            text=t('manual_auto_tune'),
+            width=10,
+            command=lambda: self.manual_auto_tune_step(step_key)
+        )
+        manual_auto_tune_button.pack(side=tk.LEFT, padx=(0, 2))
+        
         # Reset to defaults button
         reset_button = ttk.Button(
             buttons_frame,
@@ -564,6 +573,41 @@ class ParameterPanel(ttk.Frame):
             auto_tune_var = self.step_frames[step_key].get('auto_tune_var')
             return auto_tune_var.get() if auto_tune_var else False
         return False
+    
+    def manual_auto_tune_step(self, step_key: str):
+        """Manually trigger auto-tune for a specific step"""
+        try:
+            # Check if we have a get_image_callback and a loaded image
+            if not self.get_image_callback:
+                print(f"No image callback available for manual auto-tuning step {step_key}")
+                return False
+                
+            original_image = self.get_image_callback()
+            if original_image is None:
+                print(f"No image loaded for manual auto-tuning step {step_key}")
+                return False
+            
+            print(f"Performing manual auto-tune for step: {step_key}")
+            
+            # Call the processor's auto-tune method
+            optimized_params = self.processor.auto_tune_step(step_key, original_image)
+            
+            if optimized_params:
+                print(f"Auto-tune successful for {step_key}: {optimized_params}")
+                # Update UI widgets to reflect the new values
+                self.update_ui_from_parameters()
+                
+                # Trigger preview update
+                self.update_callback()
+                return True
+            else:
+                print(f"Auto-tune failed for step {step_key}")
+                return False
+                
+        except Exception as e:
+            print(f"Error during manual auto-tune for step {step_key}: {e}")
+            return False
+    
     def _perform_auto_tune_step(self, step_key: str):
         """Auto-tune parameters for a specific step using image analysis"""
         try:

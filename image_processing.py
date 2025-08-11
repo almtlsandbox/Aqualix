@@ -146,13 +146,13 @@ class ImageProcessor:
         """Get default parameters (copy of initial values)"""
         # Return the default parameters defined at class level
         return {
-            # White balance parameters
+            # White balance method selection
+            'white_balance_method': 'gray_world',  # gray_world, white_patch, shades_of_gray, grey_edge
             'white_balance_enabled': True,
-            'white_balance_method': 'gray_world',
             
-            # Gray-world parameters
-            'gray_world_threshold': 0.3,
-            'gray_world_max_adjustment': 2.5,
+            # Gray-world white balance parameters
+            'gray_world_percentile': 50,
+            'gray_world_max_adjustment': 2.0,
             
             # White-patch parameters
             'white_patch_percentile': 99,
@@ -168,29 +168,29 @@ class ImageProcessor:
             'grey_edge_sigma': 1,
             'grey_edge_max_adjustment': 2.0,
             
-            # Lake green water parameters
-            'lake_green_reduction': 0.7,
-            'lake_magenta_strength': 0.2,
-            'lake_gray_world_influence': 0.8,
+            # Lake Green Water white balance parameters
+            'lake_green_reduction': 0.3,        # Strength of green channel reduction (0.0-1.0)
+            'lake_magenta_strength': 0.15,      # Magenta compensation strength (0.0-0.5)
+            'lake_gray_world_influence': 0.7,   # Influence of gray-world correction (0.0-1.0)
             
-            # UDCP parameters
+            # UDCP (Underwater Dark Channel Prior) parameters
             'udcp_enabled': True,
-            'udcp_omega': 0.95,
-            'udcp_t0': 0.1,
-            'udcp_window_size': 15,
-            'udcp_guided_radius': 60,
-            'udcp_guided_epsilon': 0.001,
-            'udcp_enhance_factor': 1.0,
+            'udcp_omega': 0.95,           # Amount of haze to keep (0.95 = remove 95% of haze)
+            'udcp_t0': 0.1,               # Minimum transmission value
+            'udcp_window_size': 15,       # Window size for dark channel calculation
+            'udcp_guided_radius': 60,     # Radius for guided filter
+            'udcp_guided_eps': 0.001,     # Regularization parameter for guided filter
+            'udcp_enhance_contrast': 1.2, # Contrast enhancement factor
             
             # Beer-Lambert correction parameters
             'beer_lambert_enabled': True,
-            'beer_lambert_depth_factor': 10.0,
-            'beer_lambert_red_coeff': 0.6,
-            'beer_lambert_green_coeff': 0.3,
-            'beer_lambert_blue_coeff': 0.1,
-            'beer_lambert_enhance_factor': 1.5,
+            'beer_lambert_depth_factor': 0.1,      # Depth attenuation factor (0.01-1.0)
+            'beer_lambert_red_coeff': 0.6,         # Red attenuation coefficient (0.1-2.0)
+            'beer_lambert_green_coeff': 0.3,       # Green attenuation coefficient (0.1-1.5)
+            'beer_lambert_blue_coeff': 0.1,        # Blue attenuation coefficient (0.05-1.0)
+            'beer_lambert_enhance_factor': 1.5,    # Enhancement factor (1.0-3.0)
             
-            # Color Rebalancing parameters
+            # Color Rebalancing (3x3 matrix) parameters
             'color_rebalance_enabled': True,
             'color_rebalance_rr': 1.0,
             'color_rebalance_rg': 0.0,
@@ -260,7 +260,15 @@ class ImageProcessor:
         }
         
         if step_key in auto_tune_methods:
-            return auto_tune_methods[step_key](reference_image)
+            # Get optimized parameters
+            optimized_params = auto_tune_methods[step_key](reference_image)
+            
+            # Apply optimized parameters to the processor
+            if optimized_params:
+                for param_name, value in optimized_params.items():
+                    self.set_parameter(param_name, value)
+            
+            return optimized_params
         
         return {}
         
