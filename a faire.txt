@@ -22,3 +22,4 @@ Enable par defaut Auto tune
 
 Quel est le comportement sur un video: auto tune par frame ou global
 
+Amelioration globale du code?
