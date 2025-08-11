@@ -40,6 +40,9 @@ class ImageVideoProcessorApp:
         self.original_preview = None
         self.processed_preview = None
         
+        # Flag to indicate if we're loading a new image (vs parameter change)
+        self.loading_new_image = False
+        
         # Initialize image processor and logger
         self.processor = ImageProcessor()
         self.logger = AqualixLogger()
@@ -256,11 +259,14 @@ class ImageVideoProcessorApp:
         """Load an image file"""
         # Hide video controls
         self.video_frame.pack_forget()
-        
+
         try:
             if self.current_file is None:
                 raise ValueError("No file selected")
                 
+            # Mark that we're loading a new image
+            self.loading_new_image = True
+            
             # Load image using OpenCV
             self.original_image = cv2.imread(self.current_file)
             if self.original_image is None:
@@ -272,7 +278,11 @@ class ImageVideoProcessorApp:
             # Update preview
             self.update_preview()
             
+            # Reset flag
+            self.loading_new_image = False
+            
         except Exception as e:
+            self.loading_new_image = False  # Reset flag on error
             messagebox.showerror("Error", f"Could not load image: {str(e)}")
             
     def load_video(self):
@@ -311,6 +321,9 @@ class ImageVideoProcessorApp:
             return
             
         try:
+            # Mark that we're loading a new frame (acts like a new image)
+            self.loading_new_image = True
+            
             self.video_capture.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
             ret, frame = self.video_capture.read()
             
@@ -324,10 +337,15 @@ class ImageVideoProcessorApp:
                 
                 # Update preview
                 self.update_preview()
+                
+                # Reset flag
+                self.loading_new_image = False
             else:
+                self.loading_new_image = False
                 messagebox.showerror("Error", "Could not read video frame")
                 
         except Exception as e:
+            self.loading_new_image = False
             messagebox.showerror("Error", f"Could not load video frame: {str(e)}")
             
     def on_frame_change(self, value):
@@ -351,7 +369,12 @@ class ImageVideoProcessorApp:
             self.processed_image = None
             
             # Update preview panel with preview images
-            self.preview_panel.update_images(self.original_preview, self.processed_preview)
+            # Pass reset_view=True if loading new image, False if just updating parameters
+            self.preview_panel.update_images(
+                self.original_preview, 
+                self.processed_preview, 
+                reset_view=self.loading_new_image
+            )
             
             # Update pipeline description
             self.pipeline_panel.update_pipeline(self.processor.get_pipeline_description())

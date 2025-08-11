@@ -880,13 +880,13 @@ class InteractivePreviewPanel(ttk.Frame):
         
     def rotate_left(self):
         """Rotate image 90 degrees counter-clockwise"""
-        self.rotation -= 90
+        self.rotation += 90  # Fixed: + for counter-clockwise in PIL
         self.rotation = self.rotation % 360
         self.update_display()
         
     def rotate_right(self):
         """Rotate image 90 degrees clockwise"""
-        self.rotation += 90
+        self.rotation -= 90  # Fixed: - for clockwise in PIL
         self.rotation = self.rotation % 360
         self.update_display()
         
@@ -925,11 +925,43 @@ class InteractivePreviewPanel(ttk.Frame):
         # Use the smaller scale to fit entirely within canvas
         fit_scale = min(scale_x, scale_y) * 0.9  # 90% to leave some margin
         
-        # Apply the calculated scale
+        # Apply the calculated scale (preserve current rotation and reset pan only)
         self.zoom_factor = fit_scale
         self.pan_x = 0
         self.pan_y = 0
-        self.rotation = 0.0
+        # DO NOT reset rotation: self.rotation = 0.0  # Keep current rotation
+        self.update_display()
+    
+    def fit_to_canvas_with_reset(self):
+        """Fit image to canvas size and reset all transformations including rotation"""
+        if not hasattr(self, 'original_image') or self.original_image is None:
+            return
+            
+        # Get canvas dimensions - wait for canvas to be rendered
+        self.canvas.update_idletasks()
+        canvas_width = self.canvas.winfo_width()
+        canvas_height = self.canvas.winfo_height()
+        
+        # If canvas is not yet rendered properly, try again later
+        if canvas_width <= 1 or canvas_height <= 1:
+            self.canvas.after(100, self.fit_to_canvas_with_reset)
+            return
+            
+        # Get image dimensions
+        img_height, img_width = self.original_image.shape[:2]
+        
+        # Calculate scale factors
+        scale_x = canvas_width / img_width
+        scale_y = canvas_height / img_height
+        
+        # Use the smaller scale to fit entirely within canvas
+        fit_scale = min(scale_x, scale_y) * 0.9  # 90% to leave some margin
+        
+        # Reset ALL transformations including rotation (for new image loading)
+        self.zoom_factor = fit_scale
+        self.pan_x = 0
+        self.pan_y = 0
+        self.rotation = 0.0  # Reset rotation for new images
         self.update_display()
         
     def on_mouse_down(self, event):
@@ -1024,13 +1056,23 @@ class InteractivePreviewPanel(ttk.Frame):
             
         return pil_image
         
-    def update_images(self, original: np.ndarray, processed: np.ndarray):
-        """Update the displayed images"""
+    def update_images(self, original: np.ndarray, processed: np.ndarray, reset_view: bool = False):
+        """Update the displayed images
+        
+        Args:
+            original: Original image array
+            processed: Processed image array  
+            reset_view: If True, reset rotation and fit to canvas. If False, preserve current rotation.
+        """
         self.original_image = original
         self.processed_image = processed
         
-        # Auto-fit image to canvas when loading a new image
-        self.canvas.after(50, self.fit_to_canvas)  # Small delay to ensure canvas is rendered
+        if reset_view:
+            # Reset all transformations including rotation (for new image loading)
+            self.canvas.after(50, self.fit_to_canvas_with_reset)
+        else:
+            # Just update display preserving current rotation (for parameter changes)
+            self.update_display()
         
     def update_display(self):
         """Update the interactive split view display"""
