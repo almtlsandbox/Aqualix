@@ -1061,24 +1061,28 @@ class ImageProcessor:
     def multiscale_fusion(self, original: np.ndarray, processed: np.ndarray) -> np.ndarray:
         """
         Multi-scale fusion based on Ancuti method.
-        Fuses three enhancement variants (WB+contrast, WB+sharpening, UDCP) for improved robustness.
+        Fuses the processed image with additional enhancement variants for improved robustness.
         
         Args:
-            original: Original image
-            processed: Current processed image (to use as base)
+            original: Original image (for reference)
+            processed: Current processed image (result of previous pipeline steps)
             
         Returns:
             Fused result image
         """
         try:
             # Convert images to float32 for processing
-            original_f = original.astype(np.float32) / 255.0
             processed_f = processed.astype(np.float32) / 255.0
             
-            # Generate three enhancement variants
-            variant1 = self._create_wb_contrast_variant(original_f)  # WB + contrast
-            variant2 = self._create_wb_sharp_variant(original_f)     # WB + sharpening  
-            variant3 = self._create_udcp_variant(original_f)        # UDCP variant
+            # Create three variants:
+            # 1. The processed image as-is (respects pipeline)
+            variant1 = processed_f.copy()
+            
+            # 2. Processed image with additional contrast enhancement
+            variant2 = self._enhance_contrast_on_processed(processed_f)
+            
+            # 3. Processed image with additional sharpening
+            variant3 = self._enhance_sharpening_on_processed(processed_f)
             
             # Normalize variants to [0,1]
             variant1 = np.clip(variant1, 0, 1)
@@ -1162,6 +1166,50 @@ class ImageProcessor:
         variant = self.underwater_dark_channel_prior(variant_uint8)
         
         return variant.astype(np.float32) / 255.0
+    
+    def _create_additional_contrast_variant(self, image: np.ndarray) -> np.ndarray:
+        """Create additional contrast enhancement variant from processed image"""
+        # Apply additional contrast enhancement using CLAHE
+        variant_uint8 = (image * 255).astype(np.uint8)
+        lab = cv2.cvtColor(variant_uint8, cv2.COLOR_RGB2LAB)
+        clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+        lab[:, :, 0] = clahe.apply(lab[:, :, 0])
+        variant_uint8 = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
+        
+        return variant_uint8.astype(np.float32) / 255.0
+    
+    def _create_additional_sharp_variant(self, image: np.ndarray) -> np.ndarray:
+        """Create additional sharpening variant from processed image"""
+        # Apply additional unsharp masking for sharpening
+        variant_uint8 = (image * 255).astype(np.uint8)
+        blurred = cv2.GaussianBlur(variant_uint8, (0, 0), 1.2)
+        sharpened = cv2.addWeighted(variant_uint8, 1.3, blurred, -0.3, 0)
+        
+        return np.clip(sharpened.astype(np.float32) / 255.0, 0, 1)
+    
+    def _enhance_contrast_on_processed(self, processed_image: np.ndarray) -> np.ndarray:
+        """Apply gentle contrast enhancement to already processed image"""
+        # Convert to uint8 for CLAHE
+        image_uint8 = (processed_image * 255).astype(np.uint8)
+        
+        # Apply gentle CLAHE in LAB space
+        lab = cv2.cvtColor(image_uint8, cv2.COLOR_RGB2LAB)
+        clahe = cv2.createCLAHE(clipLimit=1.5, tileGridSize=(8, 8))
+        lab[:, :, 0] = clahe.apply(lab[:, :, 0])
+        enhanced = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
+        
+        return enhanced.astype(np.float32) / 255.0
+    
+    def _enhance_sharpening_on_processed(self, processed_image: np.ndarray) -> np.ndarray:
+        """Apply gentle sharpening to already processed image"""
+        # Convert to uint8 for processing
+        image_uint8 = (processed_image * 255).astype(np.uint8)
+        
+        # Apply gentle unsharp mask
+        blurred = cv2.GaussianBlur(image_uint8, (0, 0), 0.8)
+        sharpened = cv2.addWeighted(image_uint8, 1.2, blurred, -0.2, 0)
+        
+        return np.clip(sharpened.astype(np.float32) / 255.0, 0, 1)
     
     def _apply_white_balance_to_float(self, image: np.ndarray) -> np.ndarray:
         """Apply white balance to float image"""

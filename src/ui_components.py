@@ -61,6 +61,16 @@ class ParameterPanel(ttk.Frame):
         )
         expand_all_checkbox.pack(side=tk.LEFT)
         
+        # Global Auto-Tune control
+        self.global_auto_tune_var = tk.BooleanVar(value=False)
+        global_auto_tune_checkbox = ttk.Checkbutton(
+            controls_frame,
+            text=t('auto_tune_all'),
+            variable=self.global_auto_tune_var,
+            command=self.toggle_all_auto_tune
+        )
+        global_auto_tune_checkbox.pack(side=tk.LEFT, padx=(10, 0))
+        
         # Global reset button
         global_reset_button = ttk.Button(
             controls_frame,
@@ -71,6 +81,7 @@ class ParameterPanel(ttk.Frame):
         
         # Store checkbox and button for refresh_ui
         self.expand_all_checkbox = expand_all_checkbox
+        self.global_auto_tune_checkbox = global_auto_tune_checkbox
         self.global_reset_button = global_reset_button
         
         # Scrollable frame for parameters
@@ -536,6 +547,24 @@ class ParameterPanel(ttk.Frame):
             elif not expand_all and current_state:
                 # Need to collapse this section  
                 self.toggle_step_expansion(step_key)
+    
+    def toggle_all_auto_tune(self):
+        """Toggle all auto-tune checkboxes based on global auto-tune state"""
+        global_auto_tune = self.global_auto_tune_var.get()
+        
+        # Set all individual auto-tune checkboxes to match the global state
+        for step_key, frame_data in self.step_frames.items():
+            auto_tune_var = frame_data.get('auto_tune_var')
+            if auto_tune_var:
+                current_state = auto_tune_var.get()
+                
+                # Only change if different from desired state
+                if global_auto_tune != current_state:
+                    auto_tune_var.set(global_auto_tune)
+                    # Trigger the auto-tune callback for this step
+                    self.on_auto_tune_change(step_key, global_auto_tune)
+        
+        print(f"Global Auto-tune: {'enabled' if global_auto_tune else 'disabled'} for all steps")
     
     def reset_step_defaults(self, step_key: str):
         """Reset parameters for a specific step to their default values"""
