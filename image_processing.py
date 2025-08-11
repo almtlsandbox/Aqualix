@@ -102,7 +102,7 @@ class ImageProcessor:
             'hist_eq_tile_grid_size': 8,
             
             # Multi-scale fusion parameters (Ancuti method)
-            'multiscale_fusion_enabled': True,
+            'multiscale_fusion_enabled': False,
             'fusion_laplacian_levels': 5,            # Number of Laplacian pyramid levels (3-7)
             'fusion_contrast_weight': 1.0,          # Weight for contrast measure (0.0-2.0)
             'fusion_saturation_weight': 1.0,        # Weight for saturation measure (0.0-2.0)
@@ -211,7 +211,7 @@ class ImageProcessor:
             'hist_eq_tile_grid_adaptive': True,
             
             # Multi-scale fusion parameters
-            'multiscale_fusion_enabled': True,
+            'multiscale_fusion_enabled': False,
             'fusion_laplacian_levels': 5,
             'fusion_contrast_weight': 1.0,
             'fusion_saturation_weight': 1.0,
