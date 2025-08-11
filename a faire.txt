@@ -1,0 +1,24 @@
+
+✅ Ameliorer les param de defaut - TERMINÉ
+   → 6 paramètres optimisés selon 8+ références scientifiques
+   → Validation complète contre littérature spécialisée sous-marine
+
+✅ Ameliorer chaque autotune - TERMINÉ 
+   → 3 méthodes enhanced implémentées (White Balance, UDCP, Beer-Lambert)
+   → 12+ améliorations basées sur littérature scientifique
+   → Tests et validation complète
+
+✅ Reorganiser les tests - TERMINÉ
+   → Tous les tests déplacés sous tests/ avec organisation par catégorie
+   → Structure: unit/, integration/, ui/, performance/, analysis/
+   → Documentation complète dans tests/README.md
+   → Scripts d'implémentation dans tools/
+
+Je crois que la taille des tuiles de CLAHE est trop aggressive en general.
+
+Fusion devrait etre disable par default.
+
+Enable par defaut Auto tune
+
+Quel est le comportement sur un video: auto tune par frame ou global
+
