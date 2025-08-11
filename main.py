@@ -376,6 +376,10 @@ class ImageVideoProcessorApp:
                 reset_view=self.loading_new_image
             )
             
+            # Reset the flag after using it to ensure next parameter changes preserve rotation
+            if self.loading_new_image:
+                self.loading_new_image = False
+            
             # Update pipeline description
             self.pipeline_panel.update_pipeline(self.processor.get_pipeline_description())
             
