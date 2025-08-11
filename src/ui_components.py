@@ -42,6 +42,9 @@ class ParameterPanel(ttk.Frame):
         
         self.setup_ui()
         
+        # Initialize auto-tune state - activate all auto-tune by default
+        self.toggle_all_auto_tune()
+        
     def setup_ui(self):
         """Setup the parameter panel UI"""
         # Title
@@ -62,7 +65,7 @@ class ParameterPanel(ttk.Frame):
         expand_all_checkbox.pack(side=tk.LEFT)
         
         # Global Auto-Tune control
-        self.global_auto_tune_var = tk.BooleanVar(value=False)
+        self.global_auto_tune_var = tk.BooleanVar(value=True)
         global_auto_tune_checkbox = ttk.Checkbutton(
             controls_frame,
             text=t('auto_tune_all'),
@@ -252,7 +255,7 @@ class ParameterPanel(ttk.Frame):
         buttons_frame.pack(side=tk.RIGHT)
         
         # Auto-Tune checkbox
-        auto_tune_var = tk.BooleanVar(value=False)
+        auto_tune_var = tk.BooleanVar(value=True)
         auto_tune_checkbox = ttk.Checkbutton(
             buttons_frame,
             text=t('auto_tune'),

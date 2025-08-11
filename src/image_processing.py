@@ -1141,7 +1141,7 @@ class ImageProcessor:
         # Apply contrast enhancement using CLAHE
         variant_uint8 = (variant * 255).astype(np.uint8)
         lab = cv2.cvtColor(variant_uint8, cv2.COLOR_RGB2LAB)
-        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(8, 8))
+        clahe = cv2.createCLAHE(clipLimit=3.0, tileGridSize=(16, 16))
         lab[:, :, 0] = clahe.apply(lab[:, :, 0])
         variant_uint8 = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
         
@@ -1172,7 +1172,7 @@ class ImageProcessor:
         # Apply additional contrast enhancement using CLAHE
         variant_uint8 = (image * 255).astype(np.uint8)
         lab = cv2.cvtColor(variant_uint8, cv2.COLOR_RGB2LAB)
-        clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(8, 8))
+        clahe = cv2.createCLAHE(clipLimit=2.5, tileGridSize=(16, 16))
         lab[:, :, 0] = clahe.apply(lab[:, :, 0])
         variant_uint8 = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
         
@@ -1194,7 +1194,7 @@ class ImageProcessor:
         
         # Apply gentle CLAHE in LAB space
         lab = cv2.cvtColor(image_uint8, cv2.COLOR_RGB2LAB)
-        clahe = cv2.createCLAHE(clipLimit=1.5, tileGridSize=(8, 8))
+        clahe = cv2.createCLAHE(clipLimit=1.5, tileGridSize=(16, 16))
         lab[:, :, 0] = clahe.apply(lab[:, :, 0])
         enhanced = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
         

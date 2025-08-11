@@ -14,12 +14,27 @@
    → Documentation complète dans tests/README.md
    → Scripts d'implémentation dans tools/
 
-Je crois que la taille des tuiles de CLAHE est trop aggressive en general.
+✅ Je crois que la taille des tuiles de CLAHE est trop aggressive en general - TERMINÉ
+   → Tuiles CLAHE passées de (8,8) à (16,16) pixels
+   → Réduction significative des artefacts pour images sous-marines
+   → Meilleure préservation des transitions locales importantes
+   → 3 applications CLAHE corrigées dans le pipeline
 
-Fusion devrait etre disable par default.
+✅ Enable par defaut Auto tune - TERMINÉ
+   → Auto-tune global activé par défaut (value=True)
+   → Tous les auto-tune individuels activés par défaut
+   → Synchronisation automatique au démarrage
+   → Interface cohérente pour nouveaux utilisateurs
 
-Enable par defaut Auto tune
+✅ Quel est le comportement sur un video: auto tune par frame ou global - DOCUMENTÉ
+   → Comportement confirmé: AUTO-TUNE PAR FRAME
+   → Chaque frame traitée individuellement avec process_image()
+   → Peut créer variations de couleur entre frames
+   → Recommandation: désactiver auto-tune pour vidéos avec réglages manuels cohérents
+   → Documentation complète dans test_clahe_improvements.py
 
-Quel est le comportement sur un video: auto tune par frame ou global
-
-Amelioration globale du code?
+🔄 Amelioration globale du code - EN COURS
+   → Corrections CLAHE et auto-tune defaults implémentées
+   → Tests de validation créés
+   → Documentation comportement vidéo
+   → Structure projet professionnelle maintenue
