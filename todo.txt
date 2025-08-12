@@ -3,6 +3,8 @@
    → Compression lossless pour PNG (compression=9) et TIFF (compression=1)
    → Détection automatique du format selon l'extension de fichier
 
+On pourrait ajouter un tab ou un dialogue presentant des options pour la sauvegrarde des fichiers (formats, taux de compression)
+
 ✅ UDCP: le facteur Omega semble trop aggressif. Par exemple l'autotune donne 0.95 sur une image qui parait mieux avec un coef de 0.70. Pourquoi? On dirait que Autotune de UDCP ne modifie pas ce parametre. - CORRIGÉ
    → Omega base réduit de 0.85 à 0.75
    → Eau claire normale: fixé à 0.70 (selon retour utilisateur)  
@@ -14,6 +16,12 @@
    → Interface utilisateur avec menu déroulant pour sélectionner la méthode
    → Méthode adaptive_histogram_equalization() modifiée pour supporter les deux modes
    → Traductions françaises et anglaises ajoutées
+
+✅ Il y a des problèmes avec autotune all et réinitialiser all. Après 2 clic autotune reste checked. Réinitialiser devrait uncheck autotune all. Toute action sur un des deux devrait relancer le calcul de la correction. - CORRIGÉ
+   → reset_all_parameters() déactive maintenant global_auto_tune_var
+   → Synchronisation automatique entre checkbox global et individuelles
+   → Protection contre récursion avec flag _syncing_auto_tune
+   → Actions relancent systématiquement le calcul de correction
 
 ✅ pour fusion, auto-tune ne semble jamais modifier les parametres saturation et exposedness - CORRIGÉ ET VALIDÉ
    → Noms de paramètres corrigés dans _auto_tune_multiscale_fusion()
@@ -33,3 +41,6 @@
    → Affichage paramètres fusion: Niveaux Laplaciens, Poids (Contraste/Saturation/Exposition)
    → Traductions ajoutées: operation_multiscale_fusion_desc (FR/EN)
    → Tab Opérations montre maintenant toutes les étapes activées
+
+
+

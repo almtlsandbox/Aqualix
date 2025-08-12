@@ -568,19 +568,40 @@ class ParameterPanel(ttk.Frame):
         """Toggle all auto-tune checkboxes based on global auto-tune state"""
         global_auto_tune = self.global_auto_tune_var.get()
         
-        # Set all individual auto-tune checkboxes to match the global state
-        for step_key, frame_data in self.step_frames.items():
-            auto_tune_var = frame_data.get('auto_tune_var')
-            if auto_tune_var:
-                current_state = auto_tune_var.get()
-                
-                # Only change if different from desired state
-                if global_auto_tune != current_state:
-                    auto_tune_var.set(global_auto_tune)
-                    # Trigger the auto-tune callback for this step
-                    self.on_auto_tune_change(step_key, global_auto_tune)
+        print(f"Global Auto-tune: {'enabling' if global_auto_tune else 'disabling'} for all steps")
         
-        print(f"Global Auto-tune: {'enabled' if global_auto_tune else 'disabled'} for all steps")
+        # Flag to prevent sync recursion
+        self._syncing_auto_tune = True
+        
+        try:
+            # Set all individual auto-tune checkboxes to match the global state
+            changed_steps = []
+            for step_key, frame_data in self.step_frames.items():
+                auto_tune_var = frame_data.get('auto_tune_var')
+                if auto_tune_var:
+                    current_state = auto_tune_var.get()
+                    
+                    # Only change if different from desired state
+                    if global_auto_tune != current_state:
+                        auto_tune_var.set(global_auto_tune)
+                        changed_steps.append(step_key)
+            
+            # If we enabled auto-tune, run auto-tune for all changed steps
+            if global_auto_tune and changed_steps:
+                print(f"Running auto-tune for steps: {changed_steps}")
+                for step_key in changed_steps:
+                    # Perform auto-tune for this step (without triggering sync)
+                    self._perform_auto_tune_step(step_key)
+            
+            # Always trigger preview update after changing global auto-tune
+            if hasattr(self, 'update_callback') and self.update_callback:
+                self.update_callback()
+            
+            print(f"Global Auto-tune: {'enabled' if global_auto_tune else 'disabled'} for all steps")
+            
+        finally:
+            # Clear sync flag
+            self._syncing_auto_tune = False
     
     def reset_step_defaults(self, step_key: str):
         """Reset parameters for a specific step to their default values"""
@@ -612,9 +633,41 @@ class ParameterPanel(ttk.Frame):
         if enabled:
             self._perform_auto_tune_step(step_key)
         
+        # Update global auto-tune state to reflect individual checkboxes
+        self.sync_global_auto_tune_state()
+        
         # Trigger preview update to reflect any parameter changes
         if self.update_callback:
             self.update_callback()
+    
+    def sync_global_auto_tune_state(self):
+        """Synchronize global auto-tune checkbox with individual step states"""
+        # Skip sync if we're already syncing to avoid recursion
+        if getattr(self, '_syncing_auto_tune', False):
+            return
+            
+        # Count how many steps have auto-tune enabled
+        enabled_count = 0
+        total_count = 0
+        
+        for step_key, frame_data in self.step_frames.items():
+            auto_tune_var = frame_data.get('auto_tune_var')
+            if auto_tune_var:
+                total_count += 1
+                if auto_tune_var.get():
+                    enabled_count += 1
+        
+        # Set global checkbox based on individual states
+        # - If all are enabled: global = True
+        # - If none or some are enabled: global = False
+        if total_count > 0:
+            global_should_be_enabled = (enabled_count == total_count)
+            current_global_state = self.global_auto_tune_var.get()
+            
+            # Only change if different to avoid recursion
+            if global_should_be_enabled != current_global_state:
+                print(f"Syncing global auto-tune: {current_global_state} -> {global_should_be_enabled}")
+                self.global_auto_tune_var.set(global_should_be_enabled)
     
     def is_auto_tune_enabled(self, step_key: str) -> bool:
         """Check if auto-tune is enabled for a specific step"""
@@ -663,12 +716,10 @@ class ParameterPanel(ttk.Frame):
             for param_name, default_value in default_params.items():
                 self.processor.set_parameter(param_name, default_value)
             
-            # Uncheck all auto-tune checkboxes
-            for step_key, step_info in self.step_frames.items():
-                auto_tune_var = step_info.get('auto_tune_var')
-                if auto_tune_var:
-                    auto_tune_var.set(False)
-            print("All auto-tune checkboxes disabled")
+            # Set global auto-tune to False and let toggle_all_auto_tune handle the sync
+            # This will automatically uncheck all individual auto-tune checkboxes
+            self.global_auto_tune_var.set(False)
+            self.toggle_all_auto_tune()
             
             # Update UI widgets to reflect the new values
             self.update_ui_from_parameters()
@@ -676,10 +727,11 @@ class ParameterPanel(ttk.Frame):
             # Update parameter visibility (important for conditional parameters)
             self.refresh_ui()
             
-            # Trigger preview update
-            self.update_callback()
+            # Trigger preview update (this will happen in toggle_all_auto_tune already, but ensure)
+            if hasattr(self, 'update_callback') and self.update_callback:
+                self.update_callback()
             
-            print("All parameters reset to default values")
+            print("All parameters reset to default values and auto-tune disabled")
             
         except Exception as e:
             print(f"Error resetting all parameters: {e}")
