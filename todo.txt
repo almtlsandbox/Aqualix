@@ -8,11 +8,12 @@
 
 - Je voudrais avoir, dans la section egalisation, la possibilité de choisir une methode alternative, a savoir une egalisation d'histogramme globale
 
-✅ pour fusion, auto-tune ne semble jamais modifier les parametres saturation et exposedness - CORRIGÉ
+✅ pour fusion, auto-tune ne semble jamais modifier les parametres saturation et exposedness - CORRIGÉ ET VALIDÉ
    → Noms de paramètres corrigés dans _auto_tune_multiscale_fusion()
    → fusion_sigma_1/2/3 → fusion_sigma_contrast/saturation/exposedness
    → Auto-tune modifie maintenant saturation_weight et exposedness_weight
    → Basé sur analyse qualité image (saturation faible → poids élevé)
+   → TESTÉ: Image sous-exposée → saturation_weight: 1.0→1.8, exposedness_weight: 1.0→1.58
 
 ✅ lorsque je suis dans la fenetre des parametres, le scroll up/down de la souris ne marche pas. Il faut etre au dessus du scroll vertical dans la fenetre. - CORRIGÉ
    → Bindings scroll souris améliorés
