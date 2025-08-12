@@ -185,7 +185,7 @@ class ParameterPanel(ttk.Frame):
                 'description': t('histogram_equalization_step_desc'),
                 'enable_param': 'hist_eq_enabled',
                 'parameters': [
-                    'hist_eq_clip_limit', 'hist_eq_tile_grid_size'
+                    'hist_eq_method', 'hist_eq_clip_limit', 'hist_eq_tile_grid_size'
                 ]
             },
             'multiscale_fusion': {

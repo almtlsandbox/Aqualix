@@ -98,6 +98,7 @@ class ImageProcessor:
             
             # Histogram equalization parameters
             'hist_eq_enabled': True,
+            'hist_eq_method': 'clahe',  # 'clahe' or 'global'
             'hist_eq_clip_limit': 2.0,
             'hist_eq_tile_grid_size': 8,
             
@@ -933,26 +934,41 @@ class ImageProcessor:
             
     def adaptive_histogram_equalization(self, image: np.ndarray) -> np.ndarray:
         """
-        Apply Contrast Limited Adaptive Histogram Equalization (CLAHE).
+        Apply histogram equalization: either CLAHE or global method.
         """
         try:
-            # Convert to LAB color space for better results
-            lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+            method = self.parameters.get('hist_eq_method', 'clahe')
             
-            # Apply CLAHE to the L channel
-            clip_limit = self.parameters['hist_eq_clip_limit']
-            tile_grid_size = self.parameters['hist_eq_tile_grid_size']
-            
-            clahe = cv2.createCLAHE(
-                clipLimit=clip_limit,
-                tileGridSize=(tile_grid_size, tile_grid_size)
-            )
-            
-            lab[:, :, 0] = clahe.apply(lab[:, :, 0])
-            
-            # Convert back to RGB
-            result = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
-            return result
+            if method == 'global':
+                # Global histogram equalization
+                # Convert to LAB color space for better results
+                lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+                
+                # Apply global histogram equalization to the L channel
+                lab[:, :, 0] = cv2.equalizeHist(lab[:, :, 0])
+                
+                # Convert back to RGB
+                result = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
+                return result
+                
+            else:  # CLAHE (default)
+                # Convert to LAB color space for better results
+                lab = cv2.cvtColor(image, cv2.COLOR_RGB2LAB)
+                
+                # Apply CLAHE to the L channel
+                clip_limit = self.parameters['hist_eq_clip_limit']
+                tile_grid_size = self.parameters['hist_eq_tile_grid_size']
+                
+                clahe = cv2.createCLAHE(
+                    clipLimit=clip_limit,
+                    tileGridSize=(tile_grid_size, tile_grid_size)
+                )
+                
+                lab[:, :, 0] = clahe.apply(lab[:, :, 0])
+                
+                # Convert back to RGB
+                result = cv2.cvtColor(lab, cv2.COLOR_LAB2RGB)
+                return result
             
         except Exception as e:
             print(f"Error in histogram equalization: {e}")
@@ -1647,6 +1663,15 @@ class ImageProcessor:
                 'type': 'boolean',
                 'label': t('param_hist_eq_enabled_label'),
                 'description': t('param_hist_eq_enabled_desc')
+            },
+            'hist_eq_method': {
+                'type': 'choice',
+                'label': t('param_hist_eq_method_label'),
+                'description': t('param_hist_eq_method_desc'),
+                'choices': [
+                    ('clahe', t('param_hist_eq_method_clahe')),
+                    ('global', t('param_hist_eq_method_global'))
+                ]
             },
             'hist_eq_clip_limit': {
                 'type': 'float',

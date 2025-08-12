@@ -310,6 +310,11 @@ class LocalizationManager:
             # Histogram equalization parameters
             'param_hist_eq_enabled_label': 'Égalisation d\'histogramme',
             'param_hist_eq_enabled_desc': 'Applique l\'égalisation adaptative d\'histogramme pour améliorer le contraste',
+            # Histogram equalization parameters
+            'param_hist_eq_method_label': 'Méthode d\'égalisation',
+            'param_hist_eq_method_desc': 'Choisir entre égalisation adaptative (CLAHE) ou égalisation globale',
+            'param_hist_eq_method_clahe': 'CLAHE (Adaptative)',
+            'param_hist_eq_method_global': 'Globale',
             'param_hist_eq_clip_limit_label': 'Limite de coupure CLAHE',
             'param_hist_eq_clip_limit_desc': 'Seuil pour la limitation du contraste dans l\'algorithme CLAHE',
             'param_hist_eq_tile_grid_size_label': 'Taille des tuiles CLAHE',
@@ -632,6 +637,10 @@ class LocalizationManager:
             # Histogram equalization parameters
             'param_hist_eq_enabled_label': 'Histogram equalization',
             'param_hist_eq_enabled_desc': 'Apply adaptive histogram equalization to improve contrast',
+            'param_hist_eq_method_label': 'Equalization method',
+            'param_hist_eq_method_desc': 'Choose between adaptive (CLAHE) or global histogram equalization',
+            'param_hist_eq_method_clahe': 'CLAHE (Adaptive)',
+            'param_hist_eq_method_global': 'Global',
             'param_hist_eq_clip_limit_label': 'CLAHE clip limit',
             'param_hist_eq_clip_limit_desc': 'Threshold for contrast limiting in CLAHE algorithm',
             'param_hist_eq_tile_grid_size_label': 'CLAHE tile size',

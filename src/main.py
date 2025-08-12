@@ -471,9 +471,26 @@ class ImageVideoProcessorApp:
                     
                 # Convert RGB to BGR for saving
                 image_bgr = cv2.cvtColor(full_res_image, cv2.COLOR_RGB2BGR)
-                cv2.imwrite(file_path, image_bgr)
+                
+                # Determine save parameters based on file extension
+                save_params = []
+                file_ext = os.path.splitext(file_path)[1].lower()
+                
+                if file_ext in ['.jpg', '.jpeg']:
+                    # Use maximum quality (lossless-like) for JPEG
+                    save_params = [cv2.IMWRITE_JPEG_QUALITY, 100, 
+                                   cv2.IMWRITE_JPEG_LUMA_QUALITY, 100, 
+                                   cv2.IMWRITE_JPEG_CHROMA_QUALITY, 100]
+                elif file_ext == '.png':
+                    # Use maximum compression level but lossless
+                    save_params = [cv2.IMWRITE_PNG_COMPRESSION, 9]
+                elif file_ext == '.tiff':
+                    # Use lossless compression
+                    save_params = [cv2.IMWRITE_TIFF_COMPRESSION, 1]
+                
+                cv2.imwrite(file_path, image_bgr, save_params)
                 messagebox.showinfo("Success", "Image saved successfully!")
-                self.logger.info(f"Image saved: {file_path}")
+                self.logger.info(f"Image saved: {file_path} with high quality/lossless compression")
             except Exception as e:
                 messagebox.showerror("Error", f"Could not save image: {str(e)}")
                 self.logger.error(f"Save image error: {str(e)}")

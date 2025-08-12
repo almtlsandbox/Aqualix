@@ -1,4 +1,7 @@
-- verifier que la sauvegarde des images est faite avec une compression JPEG lossless
+✅ verifier que la sauvegarde des images est faite avec une compression JPEG lossless - CORRIGÉ
+   → Paramètres de qualité maximale ajoutés pour JPEG (quality=100)
+   → Compression lossless pour PNG (compression=9) et TIFF (compression=1)
+   → Détection automatique du format selon l'extension de fichier
 
 ✅ UDCP: le facteur Omega semble trop aggressif. Par exemple l'autotune donne 0.95 sur une image qui parait mieux avec un coef de 0.70. Pourquoi? On dirait que Autotune de UDCP ne modifie pas ce parametre. - CORRIGÉ
    → Omega base réduit de 0.85 à 0.75
@@ -6,7 +9,11 @@
    → Eau très bleue: max réduit à 0.85 (au lieu de 0.95)
    → Eau trouble: min réduit à 0.60 (au lieu de 0.70)
 
-- Je voudrais avoir, dans la section egalisation, la possibilité de choisir une methode alternative, a savoir une egalisation d'histogramme globale
+✅ Je voudrais avoir, dans la section egalisation, la possibilité de choisir une methode alternative, a savoir une egalisation d'histogramme globale - CORRIGÉ
+   → Paramètre 'hist_eq_method' ajouté avec choix 'clahe' ou 'global'
+   → Interface utilisateur avec menu déroulant pour sélectionner la méthode
+   → Méthode adaptive_histogram_equalization() modifiée pour supporter les deux modes
+   → Traductions françaises et anglaises ajoutées
 
 ✅ pour fusion, auto-tune ne semble jamais modifier les parametres saturation et exposedness - CORRIGÉ ET VALIDÉ
    → Noms de paramètres corrigés dans _auto_tune_multiscale_fusion()
