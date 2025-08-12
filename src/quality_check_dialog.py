@@ -10,7 +10,7 @@ import webbrowser
 from datetime import datetime
 import json
 
-from src.localization import LocalizationManager
+from .localization import LocalizationManager
 
 
 class QualityCheckDialog:
@@ -28,7 +28,7 @@ class QualityCheckDialog:
     def create_dialog(self):
         """Create the quality check dialog"""
         self.dialog = tk.Toplevel(self.parent)
-        self.dialog.title(self.loc.get_text('qc_dialog_title'))
+        self.dialog.title(self.loc.t('qc_dialog_title'))
         self.dialog.geometry("900x700")
         self.dialog.resizable(True, True)
         
@@ -66,7 +66,7 @@ class QualityCheckDialog:
         
     def create_header(self, parent):
         """Create header with overall quality score"""
-        header_frame = ttk.LabelFrame(parent, text=self.loc.get_text('qc_overall_score'), padding="10")
+        header_frame = ttk.LabelFrame(parent, text=self.loc.t('qc_overall_score'), padding="10")
         header_frame.grid(row=0, column=0, sticky="ew", pady=(0, 10))
         
         # Calculate overall score
@@ -112,7 +112,7 @@ class QualityCheckDialog:
     def create_color_analysis_tab(self):
         """Create color analysis tab"""
         tab_frame = ttk.Frame(self.notebook)
-        self.notebook.add(tab_frame, text=self.loc.get_text('qc_tab_color_analysis'))
+        self.notebook.add(tab_frame, text=self.loc.t('qc_tab_color_analysis'))
         
         # Scrollable frame
         canvas = tk.Canvas(tab_frame)
@@ -135,14 +135,14 @@ class QualityCheckDialog:
         
         # Content
         self.create_metrics_section(scrollable_frame, 'unrealistic_colors', 
-                                   self.loc.get_text('qc_unrealistic_colors'))
+                                   self.loc.t('qc_unrealistic_colors'))
         self.create_metrics_section(scrollable_frame, 'red_channel_analysis', 
-                                   self.loc.get_text('qc_red_channel_analysis'))
+                                   self.loc.t('qc_red_channel_analysis'))
         
     def create_saturation_tab(self):
         """Create saturation analysis tab"""
         tab_frame = ttk.Frame(self.notebook)
-        self.notebook.add(tab_frame, text=self.loc.get_text('qc_tab_saturation'))
+        self.notebook.add(tab_frame, text=self.loc.t('qc_tab_saturation'))
         
         # Scrollable frame setup (same as color analysis)
         canvas = tk.Canvas(tab_frame)
@@ -165,12 +165,12 @@ class QualityCheckDialog:
         
         # Content
         self.create_metrics_section(scrollable_frame, 'saturation_analysis', 
-                                   self.loc.get_text('qc_saturation_analysis'))
+                                   self.loc.t('qc_saturation_analysis'))
         
     def create_noise_artifacts_tab(self):
         """Create noise & artifacts analysis tab"""
         tab_frame = ttk.Frame(self.notebook)
-        self.notebook.add(tab_frame, text=self.loc.get_text('qc_tab_noise_artifacts'))
+        self.notebook.add(tab_frame, text=self.loc.t('qc_tab_noise_artifacts'))
         
         # Scrollable frame setup
         canvas = tk.Canvas(tab_frame)
@@ -193,14 +193,14 @@ class QualityCheckDialog:
         
         # Content
         self.create_metrics_section(scrollable_frame, 'color_noise_analysis', 
-                                   self.loc.get_text('qc_color_noise_analysis'))
+                                   self.loc.t('qc_color_noise_analysis'))
         self.create_metrics_section(scrollable_frame, 'halo_artifacts', 
-                                   self.loc.get_text('qc_halo_artifacts_analysis'))
+                                   self.loc.t('qc_halo_artifacts_analysis'))
         
     def create_tone_mapping_tab(self):
         """Create tone mapping analysis tab"""
         tab_frame = ttk.Frame(self.notebook)
-        self.notebook.add(tab_frame, text=self.loc.get_text('qc_tab_tone_mapping'))
+        self.notebook.add(tab_frame, text=self.loc.t('qc_tab_tone_mapping'))
         
         # Scrollable frame setup
         canvas = tk.Canvas(tab_frame)
@@ -223,12 +223,12 @@ class QualityCheckDialog:
         
         # Content
         self.create_metrics_section(scrollable_frame, 'midtone_balance', 
-                                   self.loc.get_text('qc_midtone_balance_analysis'))
+                                   self.loc.t('qc_midtone_balance_analysis'))
         
     def create_quality_metrics_tab(self):
         """Create quality metrics overview tab"""
         tab_frame = ttk.Frame(self.notebook)
-        self.notebook.add(tab_frame, text=self.loc.get_text('qc_tab_quality_metrics'))
+        self.notebook.add(tab_frame, text=self.loc.t('qc_tab_quality_metrics'))
         
         # Scrollable frame setup
         canvas = tk.Canvas(tab_frame)
@@ -251,7 +251,7 @@ class QualityCheckDialog:
         
         # Content
         self.create_metrics_section(scrollable_frame, 'quality_improvements', 
-                                   self.loc.get_text('qc_quality_improvements'))
+                                   self.loc.t('qc_quality_improvements'))
         
     def create_metrics_section(self, parent, section_key: str, section_title: str):
         """Create a section for specific metrics"""
@@ -274,7 +274,7 @@ class QualityCheckDialog:
                 
             # Get localized label
             label_key = f"qc_{key}"
-            label_text = self.loc.get_text(label_key, default=key.replace('_', ' ').title())
+            label_text = self.loc.t(label_key, default=key.replace('_', ' ').title())
             
             # Create label
             label = ttk.Label(section_frame, text=f"{label_text}:")
@@ -285,7 +285,7 @@ class QualityCheckDialog:
                 value_text = f"{value:.3f}"
                 color = self.get_metric_color(value, key)
             elif isinstance(value, bool):
-                value_text = self.loc.get_text('qc_detail_preserved' if value else 'qc_detail_lost')
+                value_text = self.loc.t('qc_detail_preserved' if value else 'qc_detail_lost')
                 color = "green" if value else "red"
             elif isinstance(value, (list, tuple)) and len(value) == 3:
                 # RGB values
@@ -302,7 +302,7 @@ class QualityCheckDialog:
             if isinstance(value, float):
                 status = self.get_metric_status(value, key)
                 if status != 'good':
-                    status_text = self.loc.get_text(f'qc_status_{status}')
+                    status_text = self.loc.t(f'qc_status_{status}')
                     status_color = {"warning": "orange", "problem": "red"}[status]
                     status_label = tk.Label(section_frame, text=f"[{status_text}]", 
                                           fg=status_color, font=("Arial", 8))
@@ -318,14 +318,14 @@ class QualityCheckDialog:
             row += 1
             
             # Recommendations title
-            rec_title = ttk.Label(section_frame, text=self.loc.get_text('qc_recommendations'), 
+            rec_title = ttk.Label(section_frame, text=self.loc.t('qc_recommendations'), 
                                 font=("Arial", 10, "bold"))
             rec_title.grid(row=row, column=0, columnspan=3, sticky="w")
             row += 1
             
             # List recommendations
             for rec in section_data['recommendations']:
-                rec_text = self.loc.get_text(rec, default=rec)
+                rec_text = self.loc.t(rec, default=rec)
                 rec_label = tk.Label(section_frame, text=f"• {rec_text}", 
                                    wraplength=600, justify="left", fg="darkblue")
                 rec_label.grid(row=row, column=0, columnspan=3, sticky="w", pady=2)
@@ -338,12 +338,12 @@ class QualityCheckDialog:
         button_frame.grid_columnconfigure(0, weight=1)
         
         # Export report button
-        export_btn = ttk.Button(button_frame, text=self.loc.get_text('qc_export_report'),
+        export_btn = ttk.Button(button_frame, text=self.loc.t('qc_export_report'),
                               command=self.export_report)
         export_btn.grid(row=0, column=0, sticky="w")
         
         # Close button
-        close_btn = ttk.Button(button_frame, text=self.loc.get_text('close'),
+        close_btn = ttk.Button(button_frame, text=self.loc.t('close'),
                              command=self.close_dialog)
         close_btn.grid(row=0, column=1, sticky="e")
         
@@ -434,11 +434,11 @@ class QualityCheckDialog:
     def get_status_text(self, score: float) -> str:
         """Get status text for score"""
         if score >= 8.0:
-            return self.loc.get_text('qc_status_excellent')
+            return self.loc.t('qc_status_excellent')
         elif score >= 6.0:
-            return self.loc.get_text('qc_status_good')
+            return self.loc.t('qc_status_good')
         else:
-            return self.loc.get_text('qc_status_needs_improvement')
+            return self.loc.t('qc_status_needs_improvement')
             
     def get_metric_color(self, value: float, key: str) -> str:
         """Get color for metric value based on key"""
@@ -502,11 +502,11 @@ class QualityCheckDialog:
         """Export quality report to text file"""
         try:
             filename = filedialog.asksaveasfilename(
-                title=self.loc.get_text('qc_save_report'),
+                title=self.loc.t('qc_save_report'),
                 defaultextension=".txt",
                 filetypes=[
-                    (self.loc.get_text('qc_text_files'), "*.txt"),
-                    (self.loc.get_text('qc_all_files'), "*.*")
+                    (self.loc.t('qc_text_files'), "*.txt"),
+                    (self.loc.t('qc_all_files'), "*.*")
                 ],
                 initialname=f"quality_report_{self.image_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
             )
@@ -514,13 +514,13 @@ class QualityCheckDialog:
             if filename:
                 self.save_report_to_file(filename)
                 messagebox.showinfo(
-                    self.loc.get_text('success'),
-                    self.loc.get_text('qc_report_saved')
+                    self.loc.t('success'),
+                    self.loc.t('qc_report_saved')
                 )
         except Exception as e:
             messagebox.showerror(
-                self.loc.get_text('error'),
-                f"{self.loc.get_text('qc_report_save_error')}: {str(e)}"
+                self.loc.t('error'),
+                f"{self.loc.t('qc_report_save_error')}: {str(e)}"
             )
             
     def save_report_to_file(self, filename: str):
@@ -528,7 +528,7 @@ class QualityCheckDialog:
         with open(filename, 'w', encoding='utf-8') as f:
             # Header
             f.write("=" * 60 + "\n")
-            f.write(f"{self.loc.get_text('qc_quality_report')}\n")
+            f.write(f"{self.loc.t('qc_quality_report')}\n")
             f.write("=" * 60 + "\n\n")
             
             f.write(f"Image: {self.image_name}\n")
@@ -537,7 +537,7 @@ class QualityCheckDialog:
             
             # Detailed sections
             for section_key, section_data in self.quality_results.items():
-                section_title = self.loc.get_text(f'qc_{section_key}', default=section_key.title())
+                section_title = self.loc.t(f'qc_{section_key}', default=section_key.title())
                 f.write(f"\n{section_title}\n")
                 f.write("-" * len(section_title) + "\n")
                 
@@ -545,7 +545,7 @@ class QualityCheckDialog:
                     if key == 'recommendations':
                         continue
                         
-                    label = self.loc.get_text(f'qc_{key}', default=key.replace('_', ' ').title())
+                    label = self.loc.t(f'qc_{key}', default=key.replace('_', ' ').title())
                     if isinstance(value, float):
                         f.write(f"{label}: {value:.3f}\n")
                     elif isinstance(value, (list, tuple)) and len(value) == 3:
@@ -555,9 +555,9 @@ class QualityCheckDialog:
                 
                 # Add recommendations
                 if 'recommendations' in section_data and section_data['recommendations']:
-                    f.write(f"\n{self.loc.get_text('qc_recommendations')}:\n")
+                    f.write(f"\n{self.loc.t('qc_recommendations')}:\n")
                     for rec in section_data['recommendations']:
-                        rec_text = self.loc.get_text(rec, default=rec)
+                        rec_text = self.loc.t(rec, default=rec)
                         f.write(f"  • {rec_text}\n")
                 f.write("\n")
             
@@ -568,12 +568,12 @@ class QualityCheckDialog:
                     all_recommendations.extend(section_data['recommendations'])
             
             if not all_recommendations:
-                f.write(f"{self.loc.get_text('qc_no_issues_found')}\n")
+                f.write(f"{self.loc.t('qc_no_issues_found')}\n")
             else:
-                f.write(f"{self.loc.get_text('qc_recommendations')} Summary:\n")
+                f.write(f"{self.loc.t('qc_recommendations')} Summary:\n")
                 f.write("-" * 30 + "\n")
                 for i, rec in enumerate(set(all_recommendations), 1):
-                    rec_text = self.loc.get_text(rec, default=rec)
+                    rec_text = self.loc.t(rec, default=rec)
                     f.write(f"{i}. {rec_text}\n")
                     
     def close_dialog(self):
@@ -586,3 +586,4 @@ class QualityCheckDialog:
         if self.dialog:
             self.dialog.focus()
             self.dialog.wait_window()
+

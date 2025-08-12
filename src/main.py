@@ -416,23 +416,7 @@ class ImageVideoProcessorApp:
             return None
     
     def run_quality_check(self):
-        """Run quality analysis on the processed image - DISABLED FOR NOW"""
-        messagebox.showinfo(
-            "Contrôle Qualité", 
-            "Système de contrôle qualité implémenté mais temporairement désactivé.\n"
-            "Les modules d'analyse avancée sont prêts:\n"
-            "- Détection couleurs irréalistes\n"
-            "- Analyse saturation\n"
-            "- Détection artefacts halo\n"
-            "- Amplification bruit couleur\n"
-            "- Équilibre tons moyens\n\n"
-            "Activé dans la prochaine version."
-        )
-        
-        # Original implementation commented out to avoid import issues
-        # The quality check system is fully implemented in src/quality_check.py
-        # but there are import conflicts when loading from the __init__.py
-        """
+        """Run quality analysis on the processed image"""
         if self.original_image is None or self.processed_image is None:
             messagebox.showwarning(
                 t('warning'),
@@ -440,7 +424,13 @@ class ImageVideoProcessorApp:
             )
             return
         
+        progress_window = None
         try:
+            # Dynamic import to avoid circular imports
+            import importlib.util
+            import sys
+            from pathlib import Path
+            
             # Show processing message
             progress_window = tk.Toplevel(self.root)
             progress_window.title(t('processing'))
@@ -463,6 +453,15 @@ class ImageVideoProcessorApp:
             
             progress_window.update()
             
+            # Dynamic import of quality check module
+            quality_check_path = Path(__file__).parent / "quality_check.py"
+            spec = importlib.util.spec_from_file_location("quality_check", quality_check_path)
+            if spec is None or spec.loader is None:
+                raise ImportError("Cannot load quality_check module")
+            
+            quality_check_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(quality_check_module)
+            
             # Get full resolution images for quality analysis
             original_full = self.original_image
             processed_full = self.get_full_resolution_processed_image()
@@ -471,12 +470,12 @@ class ImageVideoProcessorApp:
                 processed_full = self.processed_image
             
             # Initialize quality checker and run analysis
-            from .quality_check import PostProcessingQualityChecker
-            quality_checker = PostProcessingQualityChecker()
+            quality_checker = quality_check_module.PostProcessingQualityChecker()
             quality_results = quality_checker.run_all_checks(original_full, processed_full)
             
             # Close progress window
             progress_window.destroy()
+            progress_window = None
             
             # Show quality check dialog
             if quality_results and 'error' not in quality_results:
@@ -485,21 +484,41 @@ class ImageVideoProcessorApp:
                 if hasattr(self, 'current_file') and self.current_file:
                     image_name = os.path.basename(self.current_file)
                 
-                # For now, show results in a simple message box
-                overall_score = quality_checker._calculate_overall_score(quality_results)
-                messagebox.showinfo(
-                    "Contrôle Qualité",
-                    f"Analyse terminée pour {image_name}\\n"
-                    f"Score global: {overall_score:.1f}/10\\n\\n"
-                    f"Détails disponibles dans les logs."
-                )
+                # Dynamic import of quality dialog
+                dialog_path = Path(__file__).parent / "quality_check_dialog.py"
+                dialog_spec = importlib.util.spec_from_file_location("quality_check_dialog", dialog_path)
+                if dialog_spec is None or dialog_spec.loader is None:
+                    # Fallback to simple message box
+                    overall_score = quality_checker._calculate_overall_score(quality_results)
+                    messagebox.showinfo(
+                        "Contrôle Qualité",
+                        f"Analyse terminée pour {image_name}\n"
+                        f"Score global: {overall_score:.1f}/10\n\n"
+                        f"Détails disponibles dans les logs."
+                    )
+                else:
+                    dialog_module = importlib.util.module_from_spec(dialog_spec)
+                    dialog_spec.loader.exec_module(dialog_module)
+                    
+                    # Show detailed quality dialog
+                    quality_dialog = dialog_module.QualityCheckDialog(
+                        self.root, 
+                        quality_results, 
+                        image_name, 
+                        self.localization_manager
+                    )
+                    quality_dialog.show()
                 
-                # Log detailed results
+                # Log summary
+                overall_score = quality_checker._calculate_overall_score(quality_results)
                 self.logger.info(f"Quality check completed for {image_name}: score {overall_score:.1f}/10")
+                
+                # Log detailed recommendations
                 for category, data in quality_results.items():
                     if isinstance(data, dict) and 'recommendations' in data:
                         if data['recommendations']:
-                            self.logger.info(f"{category} recommendations: {data['recommendations']}")
+                            rec_texts = [t(rec) for rec in data['recommendations']]
+                            self.logger.info(f"{category} recommendations: {rec_texts}")
                 
                 self.logger.info("Quality check completed successfully")
             else:
@@ -511,10 +530,13 @@ class ImageVideoProcessorApp:
                 self.logger.error(f"Quality check failed: {error_msg}")
                 
         except Exception as e:
+            if progress_window is not None:
+                progress_window.destroy()
             error_msg = f"Erreur lors de l'analyse qualité: {str(e)}"
             messagebox.showerror(t('error'), error_msg)
             self.logger.error(error_msg)
-        """
+            import traceback
+            self.logger.error(f"Quality check traceback: {traceback.format_exc()}")
     
     def show_quality_placeholder(self):
         """Placeholder for quality check functionality"""
