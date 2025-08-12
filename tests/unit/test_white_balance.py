@@ -12,7 +12,7 @@ from pathlib import Path
 # Add current directory to path
 sys.path.append(str(Path(__file__).parent))
 
-from image_processing import ImageProcessor
+from src.image_processing import ImageProcessor
 
 def create_test_image():
     """Create a test image with color cast"""
@@ -117,3 +117,4 @@ def test_white_balance_methods():
 if __name__ == "__main__":
     test_white_balance_methods()
     print("\nTest completed!")
+

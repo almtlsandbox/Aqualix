@@ -7,7 +7,7 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
-from image_processing import ImageProcessor
+from src.image_processing import ImageProcessor
 
 def test_fusion_default():
     """Test that fusion is disabled by default"""
@@ -64,3 +64,4 @@ def test_fusion_default():
 
 if __name__ == "__main__":
     test_fusion_default()
+

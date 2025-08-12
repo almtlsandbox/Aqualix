@@ -1,18 +1,42 @@
 #!/usr/bin/env python3
 """
 Test corrections Todo List v2.3.1
-Validation des corrections UDCP Omega, Scroll souris, Tab Opérations, Auto-tune Fusion
+Validation des corrections UD    fusion_found = False
+    fusion_step = None
+    
+    for step in pipeline_desc:
+        if 'fusion' in step['name'].lower() or 'fusion' in step['description'].lower():
+            fusion_found = True
+            fusion_step = step
+            break
+    
+    assert fusion_found, "Pipeline description doit inclure la fusion multi-échelle"
+    assert fusion_step is not None, "Fusion step ne doit pas être None"
+    
+    # Type guard pour le linter
+    if fusion_step is None:
+        raise AssertionError("Fusion step is unexpectedly None")
+    
+    print(f"Fusion trouvée: {fusion_step['name']}")
+    print(f"Description: {fusion_step['description']}")
+    print(f"Paramètres: {fusion_step['parameters']}")
+    
+    # Vérifier que les paramètres de fusion sont affichés
+    params_text = fusion_step['parameters']
+    assert 'Saturation' in params_text, "Paramètres doivent inclure Saturation"
+    assert 'Exposition' in params_text, "Paramètres doivent inclure Exposition"
+    assert 'Contraste' in params_text, "Paramètres doivent inclure Contraste"uris, Tab Opérations, Auto-tune Fusion
 """
 
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 import cv2
 import numpy as np
 import tkinter as tk
-from image_processing import ImageProcessor
-from ui_components import ParameterPanel
+from src.image_processing import ImageProcessor
+from src.ui_components import ParameterPanel
 
 def test_udcp_omega_correction():
     """Test que l'auto-tune UDCP donne des valeurs omega moins agressives"""
@@ -100,6 +124,10 @@ def test_pipeline_description_includes_fusion():
             break
     
     assert fusion_found, "Pipeline description doit inclure la fusion multi-échelle"
+    
+    # Vérification de sécurité pour le linter
+    if fusion_step is None:
+        raise AssertionError("Fusion step est None après avoir trouvé fusion")
     
     print(f"Fusion trouvée: {fusion_step['name']}")
     print(f"Description: {fusion_step['description']}")
@@ -248,3 +276,4 @@ def run_all_todo_tests():
 
 if __name__ == "__main__":
     run_all_todo_tests()
+

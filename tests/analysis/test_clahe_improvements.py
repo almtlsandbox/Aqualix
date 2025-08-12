@@ -6,12 +6,12 @@ Validate that larger CLAHE tiles reduce artifacts while maintaining quality
 
 import sys
 import os
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', '..'))
 
 import cv2
 import numpy as np
-from image_processing import ImageProcessor
-from ui_components import ParameterPanel
+from src.image_processing import ImageProcessor
+from src.ui_components import ParameterPanel
 import tkinter as tk
 
 def test_clahe_tile_sizes():

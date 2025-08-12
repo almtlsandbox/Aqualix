@@ -9,7 +9,7 @@ import os
 # Add current directory to path
 sys.path.insert(0, os.path.dirname(__file__))
 
-from localization import t, set_language
+from src.localization import t, set_language
 
 def test_translations():
     """Test translation keys for both languages"""
@@ -37,3 +37,4 @@ def test_translations():
 
 if __name__ == "__main__":
     test_translations()
+

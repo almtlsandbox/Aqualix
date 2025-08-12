@@ -3,7 +3,7 @@
 
 import sys
 import numpy as np
-from image_processing import ImageProcessor
+from src.image_processing import ImageProcessor
 
 def test_global_reset():
     """Test the global reset functionality."""
@@ -95,3 +95,4 @@ if __name__ == "__main__":
     else:
         print("\n❌ Some tests failed.")
         sys.exit(1)
+

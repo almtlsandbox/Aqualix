@@ -6,7 +6,7 @@ Tests that steps are properly enabled/disabled based on checkbox state
 
 import numpy as np
 import cv2
-from image_processing import ImageProcessor
+from src.image_processing import ImageProcessor
 
 def create_test_image():
     """Create a simple test image"""
@@ -155,3 +155,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

@@ -6,7 +6,7 @@ Tests each step's auto-tune logic with a sample underwater image
 
 import numpy as np
 import cv2
-from image_processing import ImageProcessor
+from src.image_processing import ImageProcessor
 
 def create_test_underwater_image():
     """Create a synthetic underwater image for testing"""
@@ -126,3 +126,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

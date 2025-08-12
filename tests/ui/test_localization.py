@@ -3,7 +3,7 @@
 Test simple du système de localisation
 """
 
-from localization import get_localization_manager, t, set_language
+from src.localization import get_localization_manager, t, set_language
 
 def test_localization():
     """Test des traductions"""
@@ -33,3 +33,4 @@ def test_localization():
 
 if __name__ == "__main__":
     test_localization()
+

@@ -3,7 +3,7 @@
 Test reset defaults functionality
 """
 import numpy as np
-from image_processing import ImageProcessor
+from src.image_processing import ImageProcessor
 
 def test_reset_defaults():
     """Test reset defaults functionality"""
@@ -60,3 +60,4 @@ def test_reset_defaults():
 
 if __name__ == "__main__":
     test_reset_defaults()
+
