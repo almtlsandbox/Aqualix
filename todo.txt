@@ -5,6 +5,15 @@
 
 On pourrait ajouter un tab ou un dialogue presentant des options pour la sauvegrarde des fichiers (formats, taux de compression)
 
+✅ Dialogue de sauvegarde avancé - IMPLÉMENTÉ
+   → Interface complète avec options de format (JPEG, PNG, TIFF)
+   → Contrôles de qualité/compression personnalisables
+   → Options avancées : métadonnées EXIF, profils couleur, JPEG progressif
+   → Presets intégrés : Haute Qualité, Web Optimisé, Archive  
+   → Aperçu des paramètres en temps réel
+   → Support de la préservation des métadonnées EXIF
+   → Interface multilingue (FR/EN)
+
 ✅ UDCP: le facteur Omega semble trop aggressif. Par exemple l'autotune donne 0.95 sur une image qui parait mieux avec un coef de 0.70. Pourquoi? On dirait que Autotune de UDCP ne modifie pas ce parametre. - CORRIGÉ
    → Omega base réduit de 0.85 à 0.75
    → Eau claire normale: fixé à 0.70 (selon retour utilisateur)  
@@ -48,3 +57,113 @@ On pourrait ajouter un tab ou un dialogue presentant des options pour la sauvegr
 
 
 
+On peut ajouter a la toute fin un post-processing check - mais je ne vois pas encore comment bien exploiter cela:
+
+"
+In the context of underwater image correction, “Post-Processing Checks” is basically your last safeguard before exporting the final photo — a quality-control pass to catch and fix side effects from the enhancement pipeline.
+
+It’s where you ensure that your fixes haven’t introduced new problems.
+Here’s how you can use it effectively:
+
+1. Check for Unrealistic Colors
+Why: Aggressive red-gain or spectral compensation can push corals, skin, or sand toward neon reds/magentas.
+
+How:
+
+Visual: Compare to memory or reference images from the same dive.
+
+Histogram/Lab: Look at 
+𝑎
+∗
+a 
+∗
+  and 
+𝑏
+∗
+b 
+∗
+  channels; if 
+𝑎
+∗
+a 
+∗
+  > ~25 consistently in highlights, you may have overcompensated reds.
+
+Fix: Slight desaturation of reds, or reduce red gain factor.
+
+2. Monitor Saturation Clipping
+Why: Over-saturated areas lose detail and look “painted.”
+
+How:
+
+In HSV space, check for 
+𝑆
+>
+0.95
+S>0.95 on large areas.
+
+In Photoshop/GIMP: toggle “Highlight Clipping” warning.
+
+Fix: Apply selective saturation reduction on problem hues.
+
+3. Look for Color Noise Amplification
+Why: Low-light zones amplified during correction may show speckles, especially in the red channel.
+
+How:
+
+Zoom 100–200% in dark areas.
+
+Check per-channel noise (R often worst in deep shots).
+
+Fix: Apply targeted noise reduction (e.g., bilateral filter in Lab’s L* channel or chroma NR in YCrCb).
+
+4. Avoid “Halo” Artifacts
+Why: Overuse of CLAHE or multi-scale fusion can create edge halos around high-contrast zones.
+
+How:
+
+Look at borders between diver silhouettes, corals, and open water.
+
+Fix: Reduce CLAHE clip limit or fusion sharpening weight.
+
+5. Check Midtone Balance
+Why: Gamma tweaks can unintentionally crush shadows or wash out midtones.
+
+How:
+
+Look for shadow detail in dark sponges or fish scales.
+
+Compare histogram before/after to ensure no midtone collapse.
+
+Fix: Adjust gamma slightly (±0.05) or lift shadows.
+
+6. For Video: Temporal Consistency
+Why: Enhancement frame-by-frame can cause flicker.
+
+How:
+
+Play back video after processing; watch for color or contrast jumps.
+
+Fix: Apply temporal smoothing filter to color gain curves.
+
+Workflow Tip
+If doing this programmatically in Python:
+
+Add a final QA pass where:
+
+Compute mean & std deviation per channel.
+
+Detect if red channel mean is > ~1.3× blue/green (possible magenta shift).
+
+Detect pixel % above a saturation threshold.
+
+Apply corrective scaling only if thresholds exceeded.
+
+
+Voici des references: 
+
+Berman, D., Levy, D., Avidan, S., & Treibitz, T. Underwater Single Image Color Restoration using Haze-Lines. IEEE CVPR 2017.
+
+Ancuti, C., Ancuti, C.O., De Vleeschouwer, C., & Bekaert, P. Color Balance and Fusion for Underwater Image Enhancement. IEEE TIP, 2018.
+
+Chiang, J.Y., & Chen, Y.C. Underwater Image Enhancement by Wavelength Compensation and Dehazing. IEEE TIP, 2012."

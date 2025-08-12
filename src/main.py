@@ -428,72 +428,121 @@ class ImageVideoProcessorApp:
             self.save_image()
             
     def save_image(self):
-        """Save processed image"""
-        file_path = filedialog.asksaveasfilename(
-            title="Save Processed Image",
-            defaultextension=".jpg",
-            filetypes=[
-                ("JPEG", "*.jpg"),
-                ("PNG", "*.png"),
-                ("TIFF", "*.tiff"),
-                ("BMP", "*.bmp"),
-                ("All files", "*.*")
-            ]
-        )
+        """Save processed image with advanced options"""
+        from save_dialog import show_save_dialog
         
-        if file_path:
-            try:
-                # Show processing message for large images
-                if self.processed_image is None and self.preview_scale_factor < 1.0:
-                    # Create a simple progress window
-                    progress_window = tk.Toplevel(self.root)
-                    progress_window.title("Processing...")
-                    progress_window.geometry("300x80")
-                    progress_window.transient(self.root)
-                    progress_window.grab_set()
-                    
-                    progress_label = ttk.Label(progress_window, text="Processing full resolution image...")
-                    progress_label.pack(pady=20)
-                    
-                    # Update the window to show it
-                    progress_window.update()
-                    
-                    # Get full resolution processed image
-                    full_res_image = self.get_full_resolution_processed_image()
-                    
-                    # Close progress window
-                    progress_window.destroy()
-                else:
-                    full_res_image = self.get_full_resolution_processed_image()
-                    
-                if full_res_image is None:
-                    raise ValueError("No processed image to save")
-                    
-                # Convert RGB to BGR for saving
-                image_bgr = cv2.cvtColor(full_res_image, cv2.COLOR_RGB2BGR)
+        # Determine initial filename and format
+        initial_filename = ""
+        initial_format = "jpg"
+        
+        if hasattr(self, 'current_file') and self.current_file:
+            base_name = os.path.splitext(os.path.basename(self.current_file))[0]
+            initial_filename = f"{base_name}_processed.jpg"
+        
+        # Show advanced save dialog
+        save_options = show_save_dialog(self.root, initial_filename, initial_format)
+        
+        if not save_options:
+            return  # User cancelled
+            
+        file_path = save_options['filename']
+        
+        try:
+            # Show processing message for large images
+            if self.processed_image is None and self.preview_scale_factor < 1.0:
+                # Create a simple progress window
+                progress_window = tk.Toplevel(self.root)
+                progress_window.title("Processing...")
+                progress_window.geometry("300x80")
+                progress_window.transient(self.root)
+                progress_window.grab_set()
                 
-                # Determine save parameters based on file extension
-                save_params = []
-                file_ext = os.path.splitext(file_path)[1].lower()
+                progress_label = ttk.Label(progress_window, text="Processing full resolution image...")
+                progress_label.pack(pady=20)
                 
-                if file_ext in ['.jpg', '.jpeg']:
-                    # Use maximum quality (lossless-like) for JPEG
-                    save_params = [cv2.IMWRITE_JPEG_QUALITY, 100, 
-                                   cv2.IMWRITE_JPEG_LUMA_QUALITY, 100, 
-                                   cv2.IMWRITE_JPEG_CHROMA_QUALITY, 100]
-                elif file_ext == '.png':
-                    # Use maximum compression level but lossless
-                    save_params = [cv2.IMWRITE_PNG_COMPRESSION, 9]
-                elif file_ext == '.tiff':
-                    # Use lossless compression
+                # Update the window to show it
+                progress_window.update()
+                
+                # Get full resolution processed image
+                full_res_image = self.get_full_resolution_processed_image()
+                
+                # Close progress window
+                progress_window.destroy()
+            else:
+                full_res_image = self.get_full_resolution_processed_image()
+                
+            if full_res_image is None:
+                raise ValueError("No processed image to save")
+                
+            # Convert RGB to BGR for saving
+            image_bgr = cv2.cvtColor(full_res_image, cv2.COLOR_RGB2BGR)
+            
+            # Determine save parameters based on format and options
+            save_params = []
+            file_format = save_options['format']
+            
+            if file_format == 'jpg':
+                quality = save_options.get('quality', 95)
+                save_params = [cv2.IMWRITE_JPEG_QUALITY, quality]
+                
+                if save_options.get('progressive', False):
+                    save_params.extend([cv2.IMWRITE_JPEG_PROGRESSIVE, 1])
+                    
+            elif file_format == 'png':
+                compression = save_options.get('compression', 6)
+                save_params = [cv2.IMWRITE_PNG_COMPRESSION, compression]
+                
+            elif file_format == 'tiff':
+                compression_type = save_options.get('compression', 'lzw')
+                if compression_type == 'none':
                     save_params = [cv2.IMWRITE_TIFF_COMPRESSION, 1]
+                elif compression_type == 'lzw':
+                    save_params = [cv2.IMWRITE_TIFF_COMPRESSION, 5]
+                elif compression_type == 'zip':
+                    save_params = [cv2.IMWRITE_TIFF_COMPRESSION, 8]
+            
+            # Save with advanced options
+            success = cv2.imwrite(file_path, image_bgr, save_params)
+            
+            if success:
+                # Handle metadata preservation if requested
+                if save_options.get('preserve_metadata', False) and hasattr(self, 'current_file') and self.current_file:
+                    self._preserve_metadata(self.current_file, file_path)
                 
-                cv2.imwrite(file_path, image_bgr, save_params)
-                messagebox.showinfo("Success", "Image saved successfully!")
-                self.logger.info(f"Image saved: {file_path} with high quality/lossless compression")
-            except Exception as e:
-                messagebox.showerror("Error", f"Could not save image: {str(e)}")
-                self.logger.error(f"Save image error: {str(e)}")
+                messagebox.showinfo("Success", f"Image saved successfully!\nFile: {file_path}")
+                self.logger.info(f"Image saved: {file_path} with format: {file_format}, options: {save_options}")
+            else:
+                raise ValueError("Failed to write image file")
+                
+        except Exception as e:
+            messagebox.showerror("Error", f"Could not save image: {str(e)}")
+            self.logger.error(f"Save image error: {str(e)}")
+            
+    def _preserve_metadata(self, source_path: str, target_path: str):
+        """Preserve EXIF metadata from source to target image"""
+        try:
+            from PIL import Image
+            from PIL.ExifTags import TAGS
+            
+            # Open source image to extract EXIF
+            with Image.open(source_path) as source_img:
+                exifdata = source_img.getexif()
+                
+            # Open target image and add EXIF
+            if exifdata:
+                with Image.open(target_path) as target_img:
+                    # Convert to RGB if needed
+                    if target_img.mode != 'RGB':
+                        target_img = target_img.convert('RGB')
+                    
+                    # Save with EXIF data
+                    target_img.save(target_path, exif=exifdata, quality=95, optimize=True)
+                    
+                self.logger.info(f"EXIF metadata preserved from {source_path} to {target_path}")
+                
+        except Exception as e:
+            self.logger.warning(f"Could not preserve metadata: {str(e)}")
+            # Continue without metadata preservation - not a critical error
                 
     def save_video(self):
         """Save processed video"""
