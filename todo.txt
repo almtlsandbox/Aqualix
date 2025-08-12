@@ -209,7 +209,7 @@ On pourrait ajouter un tab ou un dialogue presentant des options pour la sauvegr
      → Interface complète avec sliders, descriptions détaillées, auto-tune, reset
      → Support multilingue (FR/EN) pour tous les paramètres
      → BESOIN: Vérification similaire pour UDCP, Color Rebalancing, Multiscale Fusion, etc.
-   - verifier l'integrité et la justesse de lèimplantation de chaque algorithme de traitement
+   - verifier l'integrité et la justesse de l'implantation de chaque algorithme de traitement
    - faire un code review generale du tout le code.
 
 

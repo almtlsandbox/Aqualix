@@ -45,7 +45,8 @@ class QualityCheckDialog:
         self.dialog.resizable(True, True)
         
         # Make dialog modal
-        self.dialog.transient(self.parent)
+        if self.parent and hasattr(self.parent, 'winfo_toplevel'):
+            self.dialog.transient(self.parent.winfo_toplevel())
         self.dialog.grab_set()
         
         # Center on parent
@@ -71,9 +72,19 @@ class QualityCheckDialog:
         
     def center_on_parent(self):
         """Center dialog on parent window"""
+        if self.dialog is None:
+            return
+            
         self.dialog.update_idletasks()
-        x = self.parent.winfo_rootx() + (self.parent.winfo_width() // 2) - (self.dialog.winfo_width() // 2)
-        y = self.parent.winfo_rooty() + (self.parent.winfo_height() // 2) - (self.dialog.winfo_height() // 2)
+        
+        if self.parent and hasattr(self.parent, 'winfo_rootx'):
+            x = self.parent.winfo_rootx() + (self.parent.winfo_width() // 2) - (self.dialog.winfo_width() // 2)
+            y = self.parent.winfo_rooty() + (self.parent.winfo_height() // 2) - (self.dialog.winfo_height() // 2)
+        else:
+            # Center on screen if no parent
+            x = (self.dialog.winfo_screenwidth() // 2) - (self.dialog.winfo_width() // 2)
+            y = (self.dialog.winfo_screenheight() // 2) - (self.dialog.winfo_height() // 2)
+            
         self.dialog.geometry(f"+{x}+{y}")
         
     def create_header(self, parent):
@@ -520,7 +531,7 @@ class QualityCheckDialog:
                     (self.loc.t('qc_text_files'), "*.txt"),
                     (self.loc.t('qc_all_files'), "*.*")
                 ],
-                initialname=f"quality_report_{self.image_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
+                initialfile=f"quality_report_{self.image_name}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
             )
             
             if filename:

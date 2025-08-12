@@ -61,7 +61,7 @@ def test_quality_system():
     """Test the quality check system"""
     try:
         # Import quality checker
-        from quality_check import PostProcessingQualityChecker
+        from src.quality_check import PostProcessingQualityChecker
         
         # Create test images
         print("Creating test images...")
