@@ -67,7 +67,7 @@ class ImageProcessor:
             
             # UDCP (Underwater Dark Channel Prior) parameters
             'udcp_enabled': True,
-            'udcp_omega': 0.95,           # Amount of haze to keep (0.95 = remove 95% of haze)
+            'udcp_omega': 0.6,            # Amount of haze to keep (0.6 = remove 60% of haze, gentle effect)
             'udcp_t0': 0.1,               # Minimum transmission value
             'udcp_window_size': 11,       # Improved: Finer detail preservation (was 15, Ancuti et al., 2018)
             'udcp_guided_radius': 60,     # Radius for guided filter
@@ -176,7 +176,7 @@ class ImageProcessor:
             
             # UDCP parameters
             'udcp_enabled': True,
-            'udcp_omega': 0.95,
+            'udcp_omega': 0.6,                  # Updated: Gentle haze removal (was 0.95, then 0.8)
             'udcp_t0': 0.1,
             'udcp_window_size': 11,             # Updated: Better detail preservation
             'udcp_guided_radius': 60,
@@ -1824,13 +1824,13 @@ class ImageProcessor:
             
             optimized_params = {}
             
-            # Adjust omega based on water clarity
+            # Adjust omega based on water clarity (gentle values)
             if turbidity > 0.15:  # Murky water
-                optimized_params['udcp_omega'] = 0.7  # Less haze removal
+                optimized_params['udcp_omega'] = 0.4  # Very gentle haze removal
             elif turbidity > 0.08:  # Medium clarity
-                optimized_params['udcp_omega'] = 0.85
+                optimized_params['udcp_omega'] = 0.5  # Moderate haze removal
             else:  # Clear water
-                optimized_params['udcp_omega'] = 0.95
+                optimized_params['udcp_omega'] = 0.6  # Standard gentle haze removal
             
             # Adjust t0 based on darkness level
             optimized_params['udcp_t0'] = max(0.05, min(0.2, 0.1 + darkness_level * 0.5))

@@ -569,6 +569,7 @@ class ParameterPanel(ttk.Frame):
         global_auto_tune = self.global_auto_tune_var.get()
         
         print(f"Global Auto-tune: {'enabling' if global_auto_tune else 'disabling'} for all steps")
+        print(f"Available steps in self.step_frames: {list(self.step_frames.keys())}")
         
         # Flag to prevent sync recursion
         self._syncing_auto_tune = True
@@ -580,11 +581,19 @@ class ParameterPanel(ttk.Frame):
                 auto_tune_var = frame_data.get('auto_tune_var')
                 if auto_tune_var:
                     current_state = auto_tune_var.get()
+                    print(f"Step {step_key}: current_state={current_state}, global_auto_tune={global_auto_tune}")
                     
                     # Only change if different from desired state
                     if global_auto_tune != current_state:
+                        print(f"  Changing {step_key} from {current_state} to {global_auto_tune}")
                         auto_tune_var.set(global_auto_tune)
                         changed_steps.append(step_key)
+                    else:
+                        print(f"  {step_key} already at desired state {global_auto_tune}")
+                else:
+                    print(f"Step {step_key}: no auto_tune_var found!")
+            
+            print(f"Changed steps: {changed_steps}")
             
             # If we enabled auto-tune, run auto-tune for all changed steps
             if global_auto_tune and changed_steps:
@@ -709,6 +718,8 @@ class ParameterPanel(ttk.Frame):
     def reset_all_parameters(self):
         """Reset ALL parameters to their default values"""
         try:
+            print("DEBUG: Starting reset_all_parameters()")
+            
             # Get all default parameters
             default_params = self.processor.get_default_parameters()
             
@@ -716,20 +727,22 @@ class ParameterPanel(ttk.Frame):
             for param_name, default_value in default_params.items():
                 self.processor.set_parameter(param_name, default_value)
             
-            # Set global auto-tune to False and let toggle_all_auto_tune handle the sync
-            # This will automatically uncheck all individual auto-tune checkboxes
-            self.global_auto_tune_var.set(False)
-            self.toggle_all_auto_tune()
+            print("DEBUG: Parameters reset to defaults")
             
-            # Update UI widgets to reflect the new values
+            # Update UI widgets to reflect the new parameter values FIRST
+            # This must happen BEFORE we modify auto-tune checkboxes
             self.update_ui_from_parameters()
             
-            # Update parameter visibility (important for conditional parameters)
-            self.refresh_ui()
+            # Set global auto-tune to False and let toggle_all_auto_tune handle the sync
+            # This will automatically uncheck all individual auto-tune checkboxes
+            print("DEBUG: Setting global_auto_tune_var to False")
+            self.global_auto_tune_var.set(False)
             
-            # Trigger preview update (this will happen in toggle_all_auto_tune already, but ensure)
-            if hasattr(self, 'update_callback') and self.update_callback:
-                self.update_callback()
+            print("DEBUG: Calling toggle_all_auto_tune()")
+            self.toggle_all_auto_tune()
+            
+            # DON'T call refresh_ui() here as it recreates widgets with default auto-tune=True
+            # The parameter visibility is handled by update_ui_from_parameters() above
             
             print("All parameters reset to default values and auto-tune disabled")
             

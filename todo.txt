@@ -17,7 +17,11 @@ On pourrait ajouter un tab ou un dialogue presentant des options pour la sauvegr
    → Méthode adaptive_histogram_equalization() modifiée pour supporter les deux modes
    → Traductions françaises et anglaises ajoutées
 
-✅ Il y a des problèmes avec autotune all et réinitialiser all. Après 2 clic autotune reste checked. Réinitialiser devrait uncheck autotune all. Toute action sur un des deux devrait relancer le calcul de la correction. - CORRIGÉ
+✅ ## Issues Résolus
+✅ Il y a des problèmes avec autotune all et réinitialiser all. Après 2 clic autotune reste checked. Réinitialiser devrait uncheck autotune all. Toute action sur un des deux devrait relancer le calcul de la correction. - CORRIGÉ DÉFINITIVEMENT
+   - Problème identifié : refresh_ui() recréait les widgets avec leurs valeurs par défaut après toggle_all_auto_tune()
+   - Solution : Suppression de refresh_ui() dans reset_all_parameters() et réorganisation de l'ordre des opérations
+   - Test validé : Reset All décoche maintenant correctement le global et tous les checkboxes individuels
    → reset_all_parameters() déactive maintenant global_auto_tune_var
    → Synchronisation automatique entre checkbox global et individuelles
    → Protection contre récursion avec flag _syncing_auto_tune
