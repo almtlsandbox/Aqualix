@@ -198,6 +198,17 @@ On pourrait ajouter un tab ou un dialogue presentant des options pour la sauvegr
 
 
 - et finalement, procedons a un code review complet:
+   - ✅ je veux que absolument tous les parametres des algo soient exposes au user - VÉRIFIÉ POUR BEER-LAMBERT
+     → Tous les 6 paramètres Beer-Lambert sont exposés dans l'interface utilisateur :
+       • beer_lambert_enabled (activation/désactivation)
+       • beer_lambert_depth_factor (0.01-1.0) - facteur de profondeur
+       • beer_lambert_red_coeff (0.1-2.0) - coefficient d'atténuation rouge
+       • beer_lambert_green_coeff (0.1-2.0) - coefficient d'atténuation vert  
+       • beer_lambert_blue_coeff (0.01-1.0) - coefficient d'atténuation bleu
+       • beer_lambert_enhance_factor (0.5-3.0) - facteur d'amélioration final
+     → Interface complète avec sliders, descriptions détaillées, auto-tune, reset
+     → Support multilingue (FR/EN) pour tous les paramètres
+     → BESOIN: Vérification similaire pour UDCP, Color Rebalancing, Multiscale Fusion, etc.
    - verifier l'integrité et la justesse de lèimplantation de chaque algorithme de traitement
    - faire un code review generale du tout le code.
 
