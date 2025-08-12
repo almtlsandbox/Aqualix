@@ -9,8 +9,20 @@ from typing import Dict, Any, Optional
 import webbrowser
 from datetime import datetime
 import json
+import sys
+import os
+from pathlib import Path
 
-from .localization import LocalizationManager
+# Add src directory to path for imports when loaded dynamically
+current_dir = Path(__file__).parent
+if str(current_dir) not in sys.path:
+    sys.path.append(str(current_dir))
+
+try:
+    from localization import LocalizationManager
+except ImportError:
+    # Fallback for when running from different contexts
+    from .localization import LocalizationManager
 
 
 class QualityCheckDialog:

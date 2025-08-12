@@ -417,10 +417,10 @@ class ImageVideoProcessorApp:
     
     def run_quality_check(self):
         """Run quality analysis on the processed image"""
-        if self.original_image is None or self.processed_image is None:
+        if self.original_image is None:
             messagebox.showwarning(
                 t('warning'),
-                "Aucune image traitée disponible pour l'analyse qualité"
+                "Aucune image chargée pour l'analyse qualité"
             )
             return
         
@@ -466,8 +466,30 @@ class ImageVideoProcessorApp:
             original_full = self.original_image
             processed_full = self.get_full_resolution_processed_image()
             
+            # If we couldn't get a processed image, try the cached one or process now
             if processed_full is None:
-                processed_full = self.processed_image
+                if self.processed_image is not None:
+                    processed_full = self.processed_image
+                else:
+                    # Last resort: process the image now for quality analysis
+                    self.logger.info("Processing image for quality analysis...")
+                    try:
+                        processed_full = self.processor.process_image(self.original_image.copy())
+                    except Exception as process_error:
+                        progress_window.destroy()
+                        error_msg = f"Erreur lors du traitement de l'image: {str(process_error)}"
+                        messagebox.showerror(t('error'), error_msg)
+                        self.logger.error(error_msg)
+                        return
+            
+            # Verify we have both images for comparison
+            if processed_full is None:
+                progress_window.destroy()
+                messagebox.showerror(
+                    t('error'), 
+                    "Impossible de générer l'image traitée pour l'analyse qualité"
+                )
+                return
             
             # Initialize quality checker and run analysis
             quality_checker = quality_check_module.PostProcessingQualityChecker()
