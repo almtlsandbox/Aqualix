@@ -254,7 +254,7 @@ class ImageVideoProcessorApp:
         else:
             self.load_image()
             
-        # Update image info panel AFTER loading (non-blocking)
+        # Update image info panel AFTER loading (non-blocking) with optimized color analysis
         # This prevents the MD5 hash calculation from delaying the progress bar
         if hasattr(self, 'info_panel'):
             def update_info_async():
@@ -265,11 +265,17 @@ class ImageVideoProcessorApp:
                     # Then calculate hash in background after 2 seconds
                     def calculate_hash_later():
                         try:
-                            self.info_panel.update_info(self.current_file, is_video=is_video, fast_mode=False)
+                            # Callback to update hash when calculation is complete
+                            def hash_ready(hash_value):
+                                # Update hash in UI thread
+                                self.root.after(0, lambda: self.info_panel.update_hash_display(hash_value))
+                            
+                            # Start async hash calculation
+                            self.info_panel.start_hash_calculation(self.current_file, is_video=is_video, callback=hash_ready)
                         except Exception as e:
                             self.logger.error(f"Error calculating hash: {e}")
                     
-                    # Schedule hash calculation for later
+                    # Schedule hash calculation for later in background thread
                     self.root.after(2000, calculate_hash_later)
                     
                 except Exception as e:

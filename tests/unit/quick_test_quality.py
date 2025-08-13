@@ -10,8 +10,11 @@ import cv2
 import numpy as np
 from pathlib import Path
 
+# Add project root to path
+sys.path.append(str(Path(__file__).parent.parent.parent))
+
 # Add src directory to path
-sys.path.append(os.path.join(os.path.dirname(__file__), 'src'))
+sys.path.append(str(Path(__file__).parent.parent.parent / 'src'))
 
 def quick_quality_test():
     """Test rapide de la correction bug contrôle qualité"""

@@ -3,9 +3,13 @@
 # Test direct avec des imports absolus
 import sys
 import os
+from pathlib import Path
+
+# Add project root to path
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 # Ajouter le répertoire src au path
-src_path = os.path.join(os.path.dirname(__file__), 'src')
+src_path = os.path.join(str(Path(__file__).parent.parent.parent), 'src')
 sys.path.insert(0, src_path)
 
 def test_translations():

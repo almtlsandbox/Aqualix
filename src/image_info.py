@@ -11,12 +11,14 @@ import os
 from pathlib import Path
 from datetime import datetime
 import hashlib
+import threading
+import queue
 
 class ImageInfoExtractor:
     def __init__(self):
         pass
         
-    def get_image_info(self, image_path, image_array=None, include_hash=True):
+    def get_image_info(self, image_path, image_array=None, include_hash=True, hash_callback=None, fast_mode=False):
         """Extract comprehensive information from an image"""
         info = {}
         
@@ -24,7 +26,7 @@ class ImageInfoExtractor:
             image_path = Path(image_path)
             
             # File information (with optional hash for speed)
-            info['file'] = self._get_file_info(image_path, include_hash=include_hash)
+            info['file'] = self._get_file_info(image_path, include_hash=include_hash, hash_callback=hash_callback)
             
             # Image properties
             if image_array is not None:
@@ -32,18 +34,31 @@ class ImageInfoExtractor:
             else:
                 info['properties'] = self._get_image_properties(image_path)
                 
-            # EXIF data
-            info['exif'] = self._get_exif_data(image_path)
-            
-            # Color analysis
-            if image_array is not None:
-                info['color_analysis'] = self._analyze_colors(image_array)
+            # EXIF data (skip in fast mode to avoid file I/O)
+            if not fast_mode:
+                info['exif'] = self._get_exif_data(image_path)
             else:
-                # Load image for color analysis
-                img = cv2.imread(str(image_path))
-                if img is not None:
-                    img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                    info['color_analysis'] = self._analyze_colors(img_rgb)
+                info['exif'] = {'raw_exif': {}, 'processed_exif': {}}
+            
+            # Color analysis (SKIP in fast mode - this is expensive!)
+            if not fast_mode:
+                if image_array is not None:
+                    info['color_analysis'] = self._analyze_colors(image_array)
+                else:
+                    # Load image for color analysis
+                    img = cv2.imread(str(image_path))
+                    if img is not None:
+                        img_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+                        info['color_analysis'] = self._analyze_colors(img_rgb)
+            else:
+                # Placeholder for fast mode
+                info['color_analysis'] = {
+                    'red_mean': 'Calculé plus tard...',
+                    'green_mean': 'Calculé plus tard...',
+                    'blue_mean': 'Calculé plus tard...',
+                    'brightness': 'Calculé plus tard...',
+                    'contrast': 'Calculé plus tard...'
+                }
                     
         except Exception as e:
             info['error'] = str(e)
@@ -68,13 +83,20 @@ class ImageInfoExtractor:
             
         return info
         
-    def _get_file_info(self, file_path, include_hash=True):
+    def _get_file_info(self, file_path, include_hash=True, hash_callback=None):
         """Get basic file information"""
         try:
             stat = file_path.stat()
             
-            # Calculate hash only if requested (for performance)
-            hash_value = self._get_file_hash(file_path) if include_hash else "Calculé en arrière-plan..."
+            # Calculate hash based on mode
+            if not include_hash:
+                hash_value = "N/A"
+            elif hash_callback:
+                # Async mode - start background calculation
+                hash_value = self._get_file_hash_async(file_path, hash_callback)
+            else:
+                # Synchronous mode (for fast_mode=True)
+                hash_value = "Calculé plus tard..."
             
             return {
                 'name': file_path.name,
@@ -195,11 +217,23 @@ class ImageInfoExtractor:
         """Analyze color properties of image"""
         analysis = {}
         
-        if len(image_array.shape) == 3:
+        # Sub-sample image for performance - statistical analysis doesn't need full resolution
+        # Target size: 200x200 pixels for ~300x performance improvement
+        h, w = image_array.shape[:2]
+        if h > 200 or w > 200:
+            # Calculate downsampling factors
+            scale_h = max(1, h // 200)
+            scale_w = max(1, w // 200)
+            # Sub-sample by taking every nth pixel
+            sampled_image = image_array[::scale_h, ::scale_w]
+        else:
+            sampled_image = image_array
+        
+        if len(sampled_image.shape) == 3:
             # RGB image
-            r_channel = image_array[:, :, 0]
-            g_channel = image_array[:, :, 1]
-            b_channel = image_array[:, :, 2]
+            r_channel = sampled_image[:, :, 0]
+            g_channel = sampled_image[:, :, 1]
+            b_channel = sampled_image[:, :, 2]
             
             analysis.update({
                 'red_mean': round(float(np.mean(r_channel)), 2),
@@ -208,8 +242,8 @@ class ImageInfoExtractor:
                 'red_std': round(float(np.std(r_channel)), 2),
                 'green_std': round(float(np.std(g_channel)), 2),
                 'blue_std': round(float(np.std(b_channel)), 2),
-                'brightness': round(float(np.mean(image_array)), 2),
-                'contrast': round(float(np.std(image_array)), 2)
+                'brightness': round(float(np.mean(sampled_image)), 2),
+                'contrast': round(float(np.std(sampled_image)), 2)
             })
             
             # Color temperature estimation (simplified)
@@ -220,17 +254,17 @@ class ImageInfoExtractor:
                 estimated_temp = 6500 - (color_temp_ratio - 1) * 1000
                 analysis['estimated_color_temp'] = max(2000, min(10000, int(estimated_temp)))
                 
-            # Dominant colors (simplified)
-            unique_colors = len(np.unique(image_array.reshape(-1, image_array.shape[-1]), axis=0))
+            # Dominant colors (simplified) - use sampled image
+            unique_colors = len(np.unique(sampled_image.reshape(-1, sampled_image.shape[-1]), axis=0))
             analysis['unique_colors'] = min(unique_colors, 1000000)  # Cap at 1M for display
             
         else:
             # Grayscale
             analysis.update({
-                'brightness': round(float(np.mean(image_array)), 2),
-                'contrast': round(float(np.std(image_array)), 2),
-                'min_intensity': int(np.min(image_array)),
-                'max_intensity': int(np.max(image_array))
+                'brightness': round(float(np.mean(sampled_image)), 2),
+                'contrast': round(float(np.std(sampled_image)), 2),
+                'min_intensity': int(np.min(sampled_image)),
+                'max_intensity': int(np.max(sampled_image))
             })
             
         return analysis
@@ -293,3 +327,19 @@ class ImageInfoExtractor:
             return hash_md5.hexdigest()[:8]  # First 8 characters
         except:
             return "N/A"
+    
+    def _get_file_hash_async(self, file_path, callback=None):
+        """Calculate MD5 hash in background thread"""
+        def calculate_hash():
+            try:
+                hash_result = self._get_file_hash(file_path)
+                if callback:
+                    callback(hash_result)
+            except Exception as e:
+                if callback:
+                    callback("Error")
+        
+        # Start background thread
+        thread = threading.Thread(target=calculate_hash, daemon=True)
+        thread.start()
+        return "Calculating..."  # Placeholder while calculating

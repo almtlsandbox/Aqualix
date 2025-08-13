@@ -943,6 +943,11 @@ class InteractivePreviewPanel(ttk.Frame):
         self.panning = False
         self.dragging_divider = False
         
+        # Performance optimization
+        self.update_timer = None
+        self.transformed_cache = {}  # Cache for transformed images
+        self.last_transform_key = None
+        
         self.setup_ui()
         
     def setup_ui(self):
@@ -1001,9 +1006,15 @@ class InteractivePreviewPanel(ttk.Frame):
         self.instructions_label.pack(pady=(2, 0))
         
     def on_split_change(self, value):
-        """Handle split slider change"""
+        """Handle split slider change with light debouncing"""
         self.split_position = float(value)
-        self.update_display()
+        
+        # Cancel previous timer
+        if self.update_timer:
+            self.after_cancel(self.update_timer)
+        
+        # Very short delay for smooth experience
+        self.update_timer = self.after(5, self.update_display)
         
     def zoom_in(self):
         """Zoom in by 25%"""
@@ -1174,12 +1185,48 @@ class InteractivePreviewPanel(ttk.Frame):
     def on_canvas_resize(self, event):
         """Handle canvas resize"""
         self.update_display()
+    
+    def get_transform_key(self, image_id):
+        """Generate cache key for current transformation state"""
+        return (image_id, self.zoom_factor, self.pan_x, self.pan_y, self.rotation)
+    
+    def clear_cache(self):
+        """Clear transformation cache"""
+        self.transformed_cache.clear()
+    
+    def draw_split_line(self):
+        """Draw just the split divider line for immediate visual feedback"""
+        try:
+            canvas_width = self.canvas.winfo_width()
+            canvas_height = self.canvas.winfo_height()
+            
+            if canvas_width <= 1 or canvas_height <= 1:
+                return
+            
+            # Calculate split position
+            split_x = canvas_width * self.split_position
+            
+            # Remove existing split line
+            self.canvas.delete("split_line")
+            
+            # Draw new split line
+            self.canvas.create_line(
+                split_x, 0, split_x, canvas_height,
+                fill="yellow", width=2, tags="split_line"
+            )
+        except:
+            pass  # Ignore errors during rapid slider movement
+    
+    def update_split_only(self):
+        """Lightweight update for split position changes only"""
+        # Simple approach: just do the full update but with shorter delay
+        self.update_display()
         
     def apply_transform(self, image_array):
-        """Apply zoom, pan, and rotation to image"""
+        """Apply zoom, pan, and rotation to image (simplified version)"""
         if image_array is None:
             return None
-            
+        
         # Convert to PIL Image
         pil_image = Image.fromarray(image_array)
         
@@ -1192,7 +1239,7 @@ class InteractivePreviewPanel(ttk.Frame):
             new_width = int(pil_image.width * self.zoom_factor)
             new_height = int(pil_image.height * self.zoom_factor)
             pil_image = pil_image.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            
+        
         return pil_image
         
     def update_images(self, original: np.ndarray, processed: np.ndarray, reset_view: bool = False):
@@ -1494,7 +1541,7 @@ class ImageInfoPanel(ttk.Frame):
                 # Hide EXIF tab for videos
                 self.info_notebook.tab(3, state='hidden')
             else:
-                self.current_info = self.info_extractor.get_image_info(file_path, image_array, include_hash=not fast_mode)
+                self.current_info = self.info_extractor.get_image_info(file_path, image_array, include_hash=not fast_mode, fast_mode=fast_mode)
                 # Show EXIF tab for images
                 self.info_notebook.tab(3, state='normal')
                 
@@ -1661,6 +1708,30 @@ class ImageInfoPanel(ttk.Frame):
             self.info_notebook.tab(1, text=t('info_tab_properties'))
             self.info_notebook.tab(2, text=t('info_tab_analysis'))
             self.info_notebook.tab(3, text=t('info_tab_exif'))
+    
+    def update_hash_display(self, hash_value):
+        """Update hash display in the UI"""
+        try:
+            if hasattr(self, 'current_info') and 'file' in self.current_info:
+                self.current_info['file']['hash_md5'] = hash_value
+                self.display_file_info()  # Refresh the file info display
+        except Exception as e:
+            print(f"Error updating hash display: {e}")
+    
+    def start_hash_calculation(self, file_path, is_video=False, callback=None):
+        """Start hash calculation in background"""
+        try:
+            if is_video:
+                # For videos, we might want to skip hash or use different approach
+                if callback:
+                    callback("Video")
+            else:
+                # For images, calculate hash with callback
+                self.info_extractor.get_image_info(file_path, include_hash=True, hash_callback=callback)
+        except Exception as e:
+            print(f"Error starting hash calculation: {e}")
+            if callback:
+                callback("Error")
 
 
 class AboutPanel(ttk.Frame):

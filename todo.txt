@@ -483,11 +483,11 @@ STATUS: ✅ QUESTIONS RÉSOLUES - Auto-tune intelligent avec détection environn
 
 
 
-Probleme:
+Nouveau probleme:
 Je load une image. C'est rapide, la progresse barre fonctionne bien.
-Sitot que je touvhe le slider de la vue, l'application gele de longues secondes. Pourquoi?
+Sitot que je touche le slider de la vue, l'application gele de longues secondes. Pourquoi?
 
-Dans le control de la qualite:
+Autre: dans le control de la qualite:
 - que veut dire "untiliser un masque selectif", je devrais ajuster quoi dans les settings pour cela?
 - que signifie: de reduire le coefficient de rouge dans Beer-Lambert?
 - la plupart du temps, le control de la qualité rapporte beaucoup trop de effet de halo

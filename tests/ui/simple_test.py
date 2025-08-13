@@ -4,9 +4,13 @@
 import tkinter as tk
 import sys
 import os
+from pathlib import Path
+
+# Add project root to path
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 # Assurer le chemin vers src
-sys.path.insert(0, 'src')
+sys.path.insert(0, str(Path(__file__).parent.parent.parent / 'src'))
 
 def test_simple():
     """Test simple des barres de progression"""
