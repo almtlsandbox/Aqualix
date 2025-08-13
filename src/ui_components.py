@@ -1466,15 +1466,15 @@ class ImageInfoPanel(ttk.Frame):
         self.exif_text.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         
-    def update_info(self, file_path, image_array=None, is_video=False):
+    def update_info(self, file_path, image_array=None, is_video=False, fast_mode=False):
         """Update the information display"""
         try:
             if is_video:
-                self.current_info = self.info_extractor.get_video_info(file_path)
+                self.current_info = self.info_extractor.get_video_info(file_path, include_hash=not fast_mode)
                 # Hide EXIF tab for videos
                 self.info_notebook.tab(3, state='hidden')
             else:
-                self.current_info = self.info_extractor.get_image_info(file_path, image_array)
+                self.current_info = self.info_extractor.get_image_info(file_path, image_array, include_hash=not fast_mode)
                 # Show EXIF tab for images
                 self.info_notebook.tab(3, state='normal')
                 

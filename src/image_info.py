@@ -16,15 +16,15 @@ class ImageInfoExtractor:
     def __init__(self):
         pass
         
-    def get_image_info(self, image_path, image_array=None):
+    def get_image_info(self, image_path, image_array=None, include_hash=True):
         """Extract comprehensive information from an image"""
         info = {}
         
         try:
             image_path = Path(image_path)
             
-            # File information
-            info['file'] = self._get_file_info(image_path)
+            # File information (with optional hash for speed)
+            info['file'] = self._get_file_info(image_path, include_hash=include_hash)
             
             # Image properties
             if image_array is not None:
@@ -50,15 +50,15 @@ class ImageInfoExtractor:
             
         return info
         
-    def get_video_info(self, video_path):
+    def get_video_info(self, video_path, include_hash=True):
         """Extract comprehensive information from a video"""
         info = {}
         
         try:
             video_path = Path(video_path)
             
-            # File information
-            info['file'] = self._get_file_info(video_path)
+            # File information (with optional hash for speed)
+            info['file'] = self._get_file_info(video_path, include_hash=include_hash)
             
             # Video properties
             info['properties'] = self._get_video_properties(video_path)
@@ -68,10 +68,13 @@ class ImageInfoExtractor:
             
         return info
         
-    def _get_file_info(self, file_path):
+    def _get_file_info(self, file_path, include_hash=True):
         """Get basic file information"""
         try:
             stat = file_path.stat()
+            
+            # Calculate hash only if requested (for performance)
+            hash_value = self._get_file_hash(file_path) if include_hash else "Calculé en arrière-plan..."
             
             return {
                 'name': file_path.name,
@@ -81,7 +84,7 @@ class ImageInfoExtractor:
                 'modified': datetime.fromtimestamp(stat.st_mtime).strftime('%Y-%m-%d %H:%M:%S'),
                 'created': datetime.fromtimestamp(stat.st_ctime).strftime('%Y-%m-%d %H:%M:%S'),
                 'extension': file_path.suffix.lower(),
-                'hash_md5': self._get_file_hash(file_path)
+                'hash_md5': hash_value
             }
         except Exception as e:
             # Return basic info even if stat fails
