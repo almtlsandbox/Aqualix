@@ -40,6 +40,10 @@ class ParameterPanel(ttk.Frame):
         self.step_frames = {}  # Store collapsible step frames
         self.step_expanded = {}  # Track expanded/collapsed state
         
+        # Debouncing for smooth slider interaction
+        self._update_timer = None
+        self._debounce_delay = 150  # milliseconds
+        
         self.setup_ui()
         
         # Initialize auto-tune state - activate all auto-tune by default
@@ -506,13 +510,38 @@ class ParameterPanel(ttk.Frame):
         self.param_widgets[param_name] = var
         
     def on_parameter_change(self, param_name: str, value: Any):
-        """Handle parameter change"""
+        """Handle parameter change with debouncing for smooth slider interaction"""
         self.processor.set_parameter(param_name, value)
         
         # Update parameter visibility if this is a method selection
         if param_name == 'white_balance_method':
             self.update_parameter_visibility()
         
+        # Use debounced update for smooth slider interaction
+        self._debounced_update()
+    
+    def _debounced_update(self):
+        """Debounced update to prevent excessive preview refreshes during slider movements"""
+        # Cancel any pending update
+        if self._update_timer is not None:
+            self.after_cancel(self._update_timer)
+        
+        # Schedule new update
+        self._update_timer = self.after(self._debounce_delay, self._execute_update)
+    
+    def _immediate_update(self):
+        """Immediate update for important operations (auto-tune, reset, etc.)"""
+        # Cancel any pending debounced update
+        if self._update_timer is not None:
+            self.after_cancel(self._update_timer)
+            self._update_timer = None
+        
+        # Execute update immediately
+        self.update_callback()
+    
+    def _execute_update(self):
+        """Execute the actual update callback"""
+        self._update_timer = None
         self.update_callback()
     
     def update_parameter_visibility(self):
@@ -604,7 +633,7 @@ class ParameterPanel(ttk.Frame):
             
             # Always trigger preview update after changing global auto-tune
             if hasattr(self, 'update_callback') and self.update_callback:
-                self.update_callback()
+                self._immediate_update()
             
             print(f"Global Auto-tune: {'enabled' if global_auto_tune else 'disabled'} for all steps")
             
@@ -641,7 +670,7 @@ class ParameterPanel(ttk.Frame):
         
         # Update preview after auto-tune
         if hasattr(self, 'update_callback') and self.update_callback:
-            self.update_callback()
+            self._immediate_update()
         
         print(f"Auto-tune completed for {len(enabled_steps)} steps")
     
@@ -662,7 +691,7 @@ class ParameterPanel(ttk.Frame):
             self.update_ui_from_parameters()
             
             # Trigger preview update
-            self.update_callback()
+            self._immediate_update()
             
         except Exception as e:
             print(f"Error resetting step {step_key}: {e}")
@@ -680,7 +709,7 @@ class ParameterPanel(ttk.Frame):
         
         # Trigger preview update to reflect any parameter changes
         if self.update_callback:
-            self.update_callback()
+            self._immediate_update()
     
     def sync_global_auto_tune_state(self):
         """Synchronize global auto-tune checkbox with individual step states"""

@@ -1,0 +1,194 @@
+# PATCH D'AMÉLIORATION RECOMMANDATIONS QUALITÉ\n# Méthodes à ajouter dans quality_check.py\n\n
+    
+    def _get_precise_recommendations(self, issue_type: str, severity: float, current_values: dict = None) -> List[str]:
+        """
+        Génère des recommandations précises avec noms de paramètres et valeurs suggérées
+        
+        Args:
+            issue_type: Type de problème détecté
+            severity: Sévérité du problème (0-1)  
+            current_values: Valeurs actuelles des paramètres (optionnel)
+            
+        Returns:
+            Liste de recommandations précises avec actions concrètes
+        """
+        recommendations = []
+        
+        # Déterminer le niveau de sévérité
+        if severity < 0.3:
+            sev_level = 'low'
+        elif severity < 0.7:
+            sev_level = 'medium'
+        else:
+            sev_level = 'high'
+            
+        # Recommandations basées sur le type de problème
+        if issue_type == 'extreme_red_colors':
+            recommendations.extend([
+                f'qc_reduce_red_gain_precise_detailed',
+                f'qc_adjust_wb_method_for_red',
+                f'qc_check_beer_lambert_settings'
+            ])
+            
+        elif issue_type == 'saturation_clipping':
+            recommendations.extend([
+                f'qc_reduce_saturation_limit_precise',
+                f'qc_enable_luminance_preserve',
+                f'qc_check_matrix_coefficients'
+            ])
+            
+        elif issue_type == 'halo_artifacts':
+            recommendations.extend([
+                f'qc_reduce_clahe_clip_precise',
+                f'qc_increase_clahe_tile_size',
+                f'qc_reduce_fusion_weights'
+            ])
+            
+        elif issue_type == 'noise_amplification':
+            recommendations.extend([
+                f'qc_reduce_amplification_factors',
+                f'qc_increase_depth_factor',
+                f'qc_consider_preprocessing'
+            ])
+            
+        return recommendations
+    
+    def _calculate_parameter_adjustments(self, issue_type: str, severity: float, current_params: dict) -> dict:
+        """
+        Calcule les ajustements précis de paramètres basés sur l'analyse
+        
+        Args:
+            issue_type: Type de problème
+            severity: Sévérité (0-1)
+            current_params: Paramètres actuels
+            
+        Returns:
+            Dictionnaire des ajustements suggérés
+        """
+        adjustments = {}
+        
+        # Facteurs d'ajustement basés sur sévérité
+        severity_multiplier = 1.0 + severity  # 1.0 à 2.0
+        
+        if issue_type == 'extreme_red_colors':
+            adjustments['beer_lambert_red_factor'] = {
+                'current': current_params.get('beer_lambert_red_factor', 1.5),
+                'suggested': max(1.0, current_params.get('beer_lambert_red_factor', 1.5) - 0.1 * severity_multiplier),
+                'reason': 'Réduire sur-correction rouge'
+            }
+            
+        elif issue_type == 'saturation_clipping':
+            adjustments['color_rebalance_saturation_limit'] = {
+                'current': current_params.get('color_rebalance_saturation_limit', 0.8),
+                'suggested': max(0.3, current_params.get('color_rebalance_saturation_limit', 0.8) - 0.15 * severity_multiplier),
+                'reason': 'Éviter écrêtage saturation'
+            }
+            
+        elif issue_type == 'halo_artifacts':
+            adjustments['hist_eq_clip_limit'] = {
+                'current': current_params.get('hist_eq_clip_limit', 4.0),
+                'suggested': max(1.0, current_params.get('hist_eq_clip_limit', 4.0) - 1.5 * severity_multiplier),
+                'reason': 'Réduire artefacts de halo'
+            }
+            
+        return adjustments
+    
+    def _format_actionable_recommendation(self, param_name: str, adjustment: dict) -> str:
+        """
+        Formate une recommandation actionnable avec valeurs précises
+        
+        Args:
+            param_name: Nom du paramètre
+            adjustment: Dictionnaire d'ajustement
+            
+        Returns:
+            Recommandation formatée avec action concrète
+        """
+        current = adjustment['current']
+        suggested = adjustment['suggested']
+        reason = adjustment['reason']
+        
+        # Mapping des noms techniques vers noms interface utilisateur
+        param_display_names = {
+            'beer_lambert_red_factor': 'Facteur Rouge (Beer-Lambert)',
+            'color_rebalance_saturation_limit': 'Limite de saturation (Rééquilibrage)',
+            'hist_eq_clip_limit': 'Limite Clip (CLAHE)',
+            'multiscale_fusion_contrast_weight': 'Poids Contraste (Fusion)',
+            'white_balance_percentile': 'Percentile (Balance des Blancs)',
+            'udcp_omega': 'Omega (UDCP)',
+        }
+        
+        display_name = param_display_names.get(param_name, param_name)
+        
+        return f"Ajuster '{display_name}': {current:.2f} → {suggested:.2f} ({reason})"
+    
+    def _generate_workflow_suggestions(self, detected_issues: List[str]) -> List[str]:
+        """
+        Génère des suggestions de workflow basées sur les problèmes détectés
+        
+        Args:
+            detected_issues: Liste des problèmes détectés
+            
+        Returns:
+            Liste de suggestions de workflow
+        """
+        suggestions = []
+        
+        # Analyse des combinaisons de problèmes
+        if 'extreme_red_colors' in detected_issues and 'magenta_shift' in detected_issues:
+            suggestions.extend([
+                "Problème de sur-correction rouge majeur détecté",
+                "Séquence recommandée: 1) Réduire Beer-Lambert, 2) Ajuster Balance, 3) Vérifier Rééquilibrage"
+            ])
+            
+        elif 'saturation_clipping' in detected_issues and 'halo_artifacts' in detected_issues:
+            suggestions.extend([
+                "Sur-traitement détecté sur multiple fronts",
+                "Recommandation: Réduire intensité globale de tous les algorithmes"
+            ])
+            
+        elif len(detected_issues) > 3:
+            suggestions.extend([
+                "Multiples problèmes détectés - Image potentiellement difficile",
+                "Considérer: 1) Auto-tune, 2) Prétraitement, 3) Séquence différente"
+            ])
+            
+        return suggestions\n\n# Patch d'intégration:\n
+# PATCH D'AMÉLIORATION DES RECOMMANDATIONS QUALITÉ
+# À intégrer dans quality_check.py
+
+# 1. Ajouter dans __init__():
+self.param_display_names = {
+    'beer_lambert_red_factor': 'Facteur Rouge (Beer-Lambert)',
+    'beer_lambert_blue_factor': 'Facteur Bleu (Beer-Lambert)', 
+    'beer_lambert_depth_factor': 'Facteur Profondeur (Beer-Lambert)',
+    'white_balance_percentile': 'Percentile (Balance des Blancs)',
+    'white_balance_max_adjustment': 'Ajustement Max (Balance des Blancs)',
+    'color_rebalance_saturation_limit': 'Limite de saturation (Rééquilibrage)',
+    'color_rebalance_rr': 'Coefficient RR (Matrice Couleur)',
+    'color_rebalance_rg': 'Coefficient RG (Matrice Couleur)',
+    'hist_eq_clip_limit': 'Limite Clip (CLAHE)',
+    'hist_eq_tile_size': 'Taille Tuile (CLAHE)',
+    'multiscale_fusion_contrast_weight': 'Poids Contraste (Fusion)',
+    'multiscale_fusion_saturation_weight': 'Poids Saturation (Fusion)',
+    'udcp_omega': 'Omega (UDCP)',
+    'udcp_t0': 'T0 (UDCP)',
+}
+
+# 2. Modifier les méthodes d'analyse pour utiliser get_precise_recommendations()
+
+# 3. Dans _check_saturation_clipping(), remplacer:
+if clipped_saturation > 0.02:
+    self.analysis_results['saturation_analysis']['recommendations'].append('qc_reduce_saturation')
+
+# Par:
+if clipped_saturation > 0.02:
+    severity = min(1.0, clipped_saturation * 10)  # 0.02 → 0.2, 0.1 → 1.0
+    precise_recs = self._get_precise_recommendations('saturation_clipping', severity)
+    self.analysis_results['saturation_analysis']['recommendations'].extend(precise_recs)
+    
+    # Ajouter ajustements calculés
+    adjustments = self._calculate_parameter_adjustments('saturation_clipping', severity, {})
+    self.analysis_results['saturation_analysis']['parameter_adjustments'] = adjustments
+
+# 4. Similaire pour les autres checks...

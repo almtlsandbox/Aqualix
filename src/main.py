@@ -286,18 +286,6 @@ class ImageVideoProcessorApp:
             
     def load_image(self):
         """Load an image file"""
-        # Try relative import first, then absolute
-        try:
-            from .progress_bar import show_progress
-        except ImportError:
-            try:
-                from src.progress_bar import show_progress
-            except ImportError:
-                import sys
-                from pathlib import Path
-                sys.path.insert(0, str(Path(__file__).parent))
-                from progress_bar import show_progress
-        
         # Hide video controls
         self.video_frame.pack_forget()
         
@@ -305,33 +293,24 @@ class ImageVideoProcessorApp:
             if self.current_file is None:
                 raise ValueError("No file selected")
                 
-            # Use progress dialog for image loading
-            with show_progress(self.root, "Chargement", "Chargement de l'image...") as progress:
-                # Mark that we're loading a new image
-                self.loading_new_image = True
+            # Mark that we're loading a new image
+            self.loading_new_image = True
+            
+            # Load image using OpenCV
+            self.original_image = cv2.imread(self.current_file)
+            if self.original_image is None:
+                raise ValueError("Could not load image")
                 
-                # Load image using OpenCV
-                progress.update_message("Lecture du fichier...")
-                import time
-                time.sleep(0.1)  # Minimal delay to ensure progress is visible
-                self.original_image = cv2.imread(self.current_file)
-                if self.original_image is None:
-                    raise ValueError("Could not load image")
-                    
-                # Convert BGR to RGB for display
-                progress.update_message("Conversion de l'image...")
-                time.sleep(0.05)  # Minimal delay to ensure progress is visible
-                self.original_image = cv2.cvtColor(self.original_image, cv2.COLOR_BGR2RGB)
-                
-                # Check if auto-tune is enabled and trigger it for new image
-                if hasattr(self.param_panel, 'global_auto_tune_var') and self.param_panel.global_auto_tune_var.get():
-                    progress.update_message("Auto-tune en cours...")
-                    # Auto-tune is enabled globally, execute auto-tune for active steps
-                    self.param_panel.trigger_auto_tune_for_new_image()
-                
-                # Update preview
-                progress.update_message("Génération de l'aperçu...")
-                self.update_preview()
+            # Convert BGR to RGB for display
+            self.original_image = cv2.cvtColor(self.original_image, cv2.COLOR_BGR2RGB)
+            
+            # Check if auto-tune is enabled and trigger it for new image
+            if hasattr(self.param_panel, 'global_auto_tune_var') and self.param_panel.global_auto_tune_var.get():
+                # Auto-tune is enabled globally, execute auto-tune for active steps
+                self.param_panel.trigger_auto_tune_for_new_image()
+            
+            # Update preview
+            self.update_preview()
             
         except Exception as e:
             messagebox.showerror("Error", f"Could not load image: {str(e)}")
@@ -407,76 +386,29 @@ class ImageVideoProcessorApp:
         """Update the preview with processed image using optimized subsampling for large images"""
         if self.original_image is None:
             return
-            
         try:
-            # For large images or complex processing, show progress
-            image_size = self.original_image.shape[0] * self.original_image.shape[1]
-            show_progress = image_size > 1000000  # Show progress for images > 1MP
+            # Use optimized preview processing
+            self.original_preview, self.processed_preview, self.preview_scale_factor = self.processor.process_image_for_preview(
+                self.original_image.copy(), max_size=1024
+            )
             
-            if show_progress:
-                # Try relative import first, then absolute
-                try:
-                    from .progress_bar import show_progress
-                except ImportError:
-                    try:
-                        from src.progress_bar import show_progress
-                    except ImportError:
-                        import sys
-                        from pathlib import Path
-                        sys.path.insert(0, str(Path(__file__).parent))
-                        from progress_bar import show_progress
-                        
-                with show_progress(self.root, "Traitement", "Génération de l'aperçu...") as progress:
-                    progress.update_message("Préparation de l'image...")
-                    
-                    # Use optimized preview processing for large images
-                    self.original_preview, self.processed_preview, self.preview_scale_factor = self.processor.process_image_for_preview(
-                        self.original_image.copy(), max_size=1024
-                    )
-                    
-                    progress.update_message("Mise à jour du cache...")
-                    # Mark that full-size processed image needs to be updated when needed
-                    # CRITICAL FIX: Only clear cache if loading new image, not on parameter changes
-                    if self.loading_new_image:
-                        self.processed_image = None
-                        self.logger.info("Cleared full resolution cache for new image")
-                    else:
-                        # Parameter change - keep cached image if it exists but mark as potentially outdated
-                        if self.processed_image is not None:
-                            self.logger.info("Parameter changed - full resolution cache may be outdated")
-                    
-                    progress.update_message("Mise à jour de l'affichage...")
-                    # Update preview panel with preview images
-                    # Pass reset_view=True if loading new image, False if just updating parameters
-                    self.preview_panel.update_images(
-                        self.original_preview, 
-                        self.processed_preview, 
-                        reset_view=self.loading_new_image
-                    )
+            # Mark that full-size processed image needs to be updated when needed
+            # CRITICAL FIX: Only clear cache if loading new image, not on parameter changes
+            if self.loading_new_image:
+                self.processed_image = None
+                self.logger.info("Cleared full resolution cache for new image")
             else:
-                # Fast processing without progress bar for small images
-                # Use optimized preview processing for large images
-                self.original_preview, self.processed_preview, self.preview_scale_factor = self.processor.process_image_for_preview(
-                    self.original_image.copy(), max_size=1024
-                )
-                
-                # Mark that full-size processed image needs to be updated when needed
-                # CRITICAL FIX: Only clear cache if loading new image, not on parameter changes
-                if self.loading_new_image:
-                    self.processed_image = None
-                    self.logger.info("Cleared full resolution cache for new image")
-                else:
-                    # Parameter change - keep cached image if it exists but mark as potentially outdated
-                    if self.processed_image is not None:
-                        self.logger.info("Parameter changed - full resolution cache may be outdated")
-                
-                # Update preview panel with preview images
-                # Pass reset_view=True if loading new image, False if just updating parameters
-                self.preview_panel.update_images(
-                    self.original_preview, 
-                    self.processed_preview, 
-                    reset_view=self.loading_new_image
-                )
+                # Parameter change - keep cached image if it exists but mark as potentially outdated
+                if self.processed_image is not None:
+                    self.logger.info("Parameter changed - full resolution cache may be outdated")
+            
+            # Update preview panel with preview images
+            # Pass reset_view=True if loading new image, False if just updating parameters
+            self.preview_panel.update_images(
+                self.original_preview, 
+                self.processed_preview, 
+                reset_view=self.loading_new_image
+            )
             
             # Reset the flag after using it to ensure next parameter changes preserve rotation
             if self.loading_new_image:
@@ -540,108 +472,85 @@ class ImageVideoProcessorApp:
             return
         
         try:
-            # Try relative import first, then absolute
-            try:
-                from .progress_bar import show_progress
-            except ImportError:
-                try:
-                    from src.progress_bar import show_progress
-                except ImportError:
-                    import sys
-                    from pathlib import Path
-                    sys.path.insert(0, str(Path(__file__).parent))
-                    from progress_bar import show_progress
-                    
-            with show_progress(self.root, "Analyse Qualité", "Initialisation...") as progress:
-                # Dynamic import to avoid circular imports
-                import importlib.util
-                import sys
-                from pathlib import Path
-                
-                progress.update_message("Chargement du module d'analyse...")
-                
-                # Dynamic import of quality check module
-                quality_check_path = Path(__file__).parent / "quality_check.py"
-                spec = importlib.util.spec_from_file_location("quality_check", quality_check_path)
-                if spec is None or spec.loader is None:
-                    raise ImportError("Cannot load quality_check module")
-                
-                quality_check_module = importlib.util.module_from_spec(spec)
-                spec.loader.exec_module(quality_check_module)
-                
-                progress.update_message("Préparation des images...")
-                
-                # Get original image
-                original_full = self.original_image
-                
-                # Get processed image - CRITICAL FIX: Use current display state, not reprocess
-                processed_full = None
-                
-                # Option 1: Use preview if it represents current settings (scale up if needed)
-                if self.processed_preview is not None and self.preview_scale_factor is not None:
-                    if self.preview_scale_factor < 1.0:
-                        # Scale up preview to original size for quality analysis
-                        progress.update_message("Redimensionnement pour l'analyse...")
-                        original_height, original_width = self.original_image.shape[:2]
-                        processed_full = cv2.resize(
-                            self.processed_preview, 
-                            (original_width, original_height), 
-                            interpolation=cv2.INTER_CUBIC
-                        )
-                        self.logger.info(f"Quality check using scaled preview (factor: {self.preview_scale_factor:.3f})")
-                    else:
-                        # Preview is full resolution, use directly
-                        processed_full = self.processed_preview.copy()
-                        self.logger.info("Quality check using full resolution preview")
-                
-                # Option 2: Use cached full resolution if available
-                if processed_full is None and self.processed_image is not None:
-                    processed_full = self.processed_image
-                    self.logger.info("Quality check using cached full resolution image")
-                
-                # Option 3: Process with current parameters (LAST RESORT - may be inconsistent)
-                if processed_full is None:
-                    progress.update_message("Traitement de l'image...")
-                    self.logger.warning("No processed image available, generating fresh (may be inconsistent)")
-                    original_callback = None
-                    try:
-                        # Temporarily disable auto-tune to avoid parameter changes
-                        original_callback = self.processor.auto_tune_callback
-                        self.processor.set_auto_tune_callback(lambda step: False)
-                        
-                        processed_full = self.processor.process_image(self.original_image.copy())
-                        
-                        # Restore original callback
-                        self.processor.set_auto_tune_callback(original_callback)
-                        
-                    except Exception as process_error:
-                        # Restore original callback in case of error (if it was set)
-                        if original_callback is not None:
-                            try:
-                                self.processor.set_auto_tune_callback(original_callback)
-                            except:
-                                pass  # Ignore secondary errors
-                        
-                        error_msg = f"Erreur lors du traitement de l'image: {str(process_error)}"
-                        messagebox.showerror(t('error'), error_msg)
-                        self.logger.error(error_msg)
-                        return
-                
-                # Verify we have both images for comparison
-                if processed_full is None:
-                    messagebox.showerror(
-                        t('error'), 
-                        "Impossible de générer l'image traitée pour l'analyse qualité"
+            # Dynamic import to avoid circular imports
+            import importlib.util
+            import sys
+            from pathlib import Path
+            
+            # Dynamic import of quality check module
+            quality_check_path = Path(__file__).parent / "quality_check.py"
+            spec = importlib.util.spec_from_file_location("quality_check", quality_check_path)
+            if spec is None or spec.loader is None:
+                raise ImportError("Cannot load quality_check module")
+            
+            quality_check_module = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(quality_check_module)
+            
+            # Get original image
+            original_full = self.original_image
+            
+            # Get processed image - CRITICAL FIX: Use current display state, not reprocess
+            processed_full = None
+            
+            # Option 1: Use preview if it represents current settings (scale up if needed)
+            if self.processed_preview is not None and self.preview_scale_factor is not None:
+                if self.preview_scale_factor < 1.0:
+                    # Scale up preview to original size for quality analysis
+                    original_height, original_width = self.original_image.shape[:2]
+                    processed_full = cv2.resize(
+                        self.processed_preview, 
+                        (original_width, original_height), 
+                        interpolation=cv2.INTER_CUBIC
                     )
+                    self.logger.info(f"Quality check using scaled preview (factor: {self.preview_scale_factor:.3f})")
+                else:
+                    # Preview is full resolution, use directly
+                    processed_full = self.processed_preview.copy()
+                    self.logger.info("Quality check using full resolution preview")
+            
+            # Option 2: Use cached full resolution if available
+            if processed_full is None and self.processed_image is not None:
+                processed_full = self.processed_image
+                self.logger.info("Quality check using cached full resolution image")
+            
+            # Option 3: Process with current parameters (LAST RESORT - may be inconsistent)
+            if processed_full is None:
+                self.logger.warning("No processed image available, generating fresh (may be inconsistent)")
+                original_callback = None
+                try:
+                    # Temporarily disable auto-tune to avoid parameter changes
+                    original_callback = self.processor.auto_tune_callback
+                    self.processor.set_auto_tune_callback(lambda step: False)
+                    
+                    processed_full = self.processor.process_image(self.original_image.copy())
+                    
+                    # Restore original callback
+                    self.processor.set_auto_tune_callback(original_callback)
+                        
+                except Exception as process_error:
+                    # Restore original callback in case of error (if it was set)
+                    if original_callback is not None:
+                        try:
+                            self.processor.set_auto_tune_callback(original_callback)
+                        except:
+                            pass  # Ignore secondary errors
+                    
+                    error_msg = f"Erreur lors du traitement de l'image: {str(process_error)}"
+                    messagebox.showerror(t('error'), error_msg)
+                    self.logger.error(error_msg)
                     return
-                
-                progress.update_message("Analyse en cours...")
-                
-                # Initialize quality checker and run analysis
-                quality_checker = quality_check_module.PostProcessingQualityChecker()
-                quality_results = quality_checker.run_all_checks(original_full, processed_full)
-                
-                progress.update_message("Finalisation...")
+            
+            # Verify we have both images for comparison
+            if processed_full is None:
+                messagebox.showerror(
+                    t('error'), 
+                    "Impossible de générer l'image traitée pour l'analyse qualité"
+                )
+                return
+            
+            # Initialize quality checker and run analysis
+            quality_checker = quality_check_module.PostProcessingQualityChecker()
+            quality_results = quality_checker.run_all_checks(original_full, processed_full)
                 
             # Show quality check dialog
             if quality_results and 'error' not in quality_results:
@@ -713,52 +622,25 @@ class ImageVideoProcessorApp:
             
     def save_result(self):
         """Save the processed result"""
-        # Try relative import first, then absolute
         try:
-            from .progress_bar import show_progress
-        except ImportError:
-            try:
-                from src.progress_bar import show_progress
-            except ImportError:
-                import sys
-                from pathlib import Path
-                sys.path.insert(0, str(Path(__file__).parent))
-                from progress_bar import show_progress
-        
-        try:
-            with show_progress(self.root, "Préparation", "Préparation de l'image...") as progress:
-                # Get full resolution processed image
-                progress.update_message("Traitement pleine résolution...")
-                full_res_image = self.get_full_resolution_processed_image()
+            # Get full resolution processed image
+            full_res_image = self.get_full_resolution_processed_image()
+            
+            if full_res_image is None:
+                messagebox.showwarning("Warning", "No processed image to save")
+                return
                 
-                if full_res_image is None:
-                    messagebox.showwarning("Warning", "No processed image to save")
-                    return
-                    
-                # Check if it's a video
-                if self.video_capture:
-                    progress.update_message("Préparation sauvegarde vidéo...")
-                    self.save_video()
-                else:
-                    progress.update_message("Préparation sauvegarde image...")
-                    self.save_image()
+            # Check if it's a video
+            if self.video_capture:
+                self.save_video()
+            else:
+                self.save_image()
         except Exception as e:
             messagebox.showerror("Error", f"Erreur lors de la sauvegarde: {str(e)}")
             
     def save_image(self):
         """Save processed image with advanced options"""
         from save_dialog import show_save_dialog
-        # Try relative import first, then absolute
-        try:
-            from .progress_bar import show_progress
-        except ImportError:
-            try:
-                from src.progress_bar import show_progress
-            except ImportError:
-                import sys
-                from pathlib import Path
-                sys.path.insert(0, str(Path(__file__).parent))
-                from progress_bar import show_progress
         
         # Determine initial filename and format
         initial_filename = ""
@@ -777,19 +659,16 @@ class ImageVideoProcessorApp:
         file_path = save_options['filename']
         
         try:
-            with show_progress(self.root, "Sauvegarde", "Sauvegarde en cours...") as progress:
-                # Get full resolution image if needed
-                if self.processed_image is None and self.preview_scale_factor < 1.0:
-                    progress.update_message("Traitement pleine résolution...")
-                    full_res_image = self.get_full_resolution_processed_image()
-                else:
-                    full_res_image = self.get_full_resolution_processed_image()
+            # Get full resolution image if needed
+            if self.processed_image is None and self.preview_scale_factor < 1.0:
+                full_res_image = self.get_full_resolution_processed_image()
+            else:
+                full_res_image = self.get_full_resolution_processed_image()
                     
                 if full_res_image is None:
                     raise ValueError("No processed image to save")
                     
                 # Convert RGB to BGR for saving
-                progress.update_message("Conversion de l'image...")
                 image_bgr = cv2.cvtColor(full_res_image, cv2.COLOR_RGB2BGR)
                 
                 # Determine save parameters based on format and options
@@ -818,13 +697,11 @@ class ImageVideoProcessorApp:
                         save_params = [cv2.IMWRITE_TIFF_COMPRESSION, 8]
                 
                 # Save with advanced options
-                progress.update_message("Écriture du fichier...")
                 success = cv2.imwrite(file_path, image_bgr, save_params)
                 
                 if success:
                     # Handle metadata preservation if requested
                     if save_options.get('preserve_metadata', False) and hasattr(self, 'current_file') and self.current_file:
-                        progress.update_message("Préservation des métadonnées...")
                         self._preserve_metadata(self.current_file, file_path)
                     
                     messagebox.showinfo("Success", f"Image saved successfully!\nFile: {file_path}")
