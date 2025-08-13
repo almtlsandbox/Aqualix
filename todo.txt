@@ -372,8 +372,57 @@ Pourquoi j'obtiens the meme rapport de qualité quelque soit les operations que 
    
    → VALIDATION: Tests manuels et automatiques confirmant la correction
 
-Est-ce que les auto-tune tests toutes les methodes, par exemple est-ce que cela teste parmis les differentes methodes de white-balancing?
-Est-ce que le auto-tune de white balancing detecte le type d'eau (ocean versus Lac) pour guider la selection de la meilleure approche?
+✅ QUESTIONS AUTO-TUNE MÉTHODES DE BALANCE DES BLANCS - RÉSOLUES (13 août 2025)
+❓ Est-ce que l'auto-tune teste toutes les méthodes de white-balancing?
+✅ RÉPONSE: NON - Sélection intelligente d'UNE méthode optimale
+   → FONCTIONNEMENT ACTUEL:
+     • Analyse caractéristiques image (ratios R/G/B, force contours)
+     • Sélection automatique méthode la plus adaptée
+     • Optimisation paramètres de cette méthode uniquement
+     • Application directe (pas de test exhaustif)
+   
+   → LOGIQUE DE SÉLECTION:
+     🏞️  G_ratio > 0.4 → lake_green_water (eau douce/lac)
+     🌊 B_ratio < 0.25 → gray_world (eau profonde/océan)  
+     🐟 R_ratio < 0.2 → shades_of_gray (eau tropicale normale)
+     🪸 Edge_strength > 0.1 → grey_edge (eau claire/contrastée)
+     💧 Cas défaut → white_patch (eau standard/équilibrée)
+
+❓ Est-ce que l'auto-tune détecte le type d'eau (océan vs lac)?
+✅ RÉPONSE: OUI - Détection automatique de 5 types d'environnement
+   → TYPES D'EAU DÉTECTÉS:
+     🏞️  LAC/EAU DOUCE: G_ratio > 0.4
+        • Forte dominante verte (algues/végétation)
+        • Méthode: lake_green_water
+        • Paramètres: green_reduction, magenta_strength, gray_world_influence
+     
+     🌊 OCÉAN/EAU PROFONDE: B_ratio < 0.25  
+        • Perte importante canal bleu en profondeur
+        • Méthode: gray_world
+        • Paramètres: percentile, max_adjustment adaptatifs
+     
+     🐟 EAU TROPICALE/NORMALE: R_ratio < 0.2
+        • Perte typique rouge sous-marine
+        • Méthode: shades_of_gray
+        • Paramètres: norm, percentile, max_adjustment
+     
+     🪸 EAU CLAIRE/CONTRASTÉE: Edge_strength > 0.1
+        • Beaucoup détails/contrastes visibles
+        • Méthode: grey_edge
+        • Paramètres: norm, sigma, max_adjustment
+     
+     💧 EAU STANDARD/ÉQUILIBRÉE: Cas par défaut
+        • Conditions normales, pas dominante forte
+        • Méthode: white_patch
+        • Paramètres: percentile, max_adjustment standards
+
+   → MÉCANISME DETECTION:
+     ✅ Analyse ratios couleur (R/G/B) pour dominantes
+     ✅ Calcul force contours (Laplacian) pour détails
+     ✅ Sélection méthode selon caractéristiques dominantes
+     ✅ Paramètres adaptatifs selon environnement détecté
+
+STATUS: ✅ QUESTIONS RÉSOLUES - Auto-tune intelligent avec détection environnement
 
 ✅ BARRES DE PROGRESSION - IMPLÉMENTÉES ET OPTIMISÉES (13 août 2025)
    → COMPOSANT: src/progress_bar.py - Système de progression modulaire et complet
