@@ -5,7 +5,7 @@ Contains image processing algorithms and pipeline management.
 
 import cv2
 import numpy as np
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List, Tuple, Optional
 from .localization import t
 
 def create_preview_image(image: np.ndarray, max_size: int = 1024) -> Tuple[np.ndarray, float]:
@@ -2914,7 +2914,7 @@ class ImageProcessor:
             'overall_quality': metrics.overall_quality
         }
 
-    def auto_tune_with_quality_optimization(self, img: np.ndarray, algorithms: list = None) -> dict:
+    def auto_tune_with_quality_optimization(self, img: np.ndarray, algorithms: Optional[List[str]] = None) -> dict:
         """
         Auto-tune avancé avec optimisation basée sur métriques de qualité (Étape 4)
         
@@ -2940,7 +2940,7 @@ class ImageProcessor:
         
         return final_results
 
-    def auto_tune_functions(self, img: np.ndarray, algorithms: list = None) -> dict:
+    def auto_tune_functions(self, img: np.ndarray, algorithms: Optional[List[str]] = None) -> dict:
         """
         Système unifié d'auto-tune avec mapping intégré (Étape 3)
         
@@ -2959,7 +2959,7 @@ class ImageProcessor:
         # Utiliser le système de mapping intégré
         return mapper.execute_pipeline_auto_tune(img, algorithms)
 
-    def _fallback_auto_tune(self, img: np.ndarray, algorithms: list = None) -> dict:
+    def _fallback_auto_tune(self, img: np.ndarray, algorithms: Optional[List[str]] = None) -> dict:
         """Fallback auto-tune sans système de mapping"""
         if algorithms is None:
             algorithms = ['white_balance', 'udcp', 'beer_lambert', 'color_rebalance', 

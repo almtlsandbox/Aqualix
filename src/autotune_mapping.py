@@ -229,6 +229,10 @@ class AutoTuneMapper:
         
         try:
             result = method(image)
+            if result is None:
+                result = {}
+            elif not isinstance(result, dict):
+                result = {}
             mode = "enhanced" if (enhanced or (enhanced is None and self.enhanced_mode)) else "standard"
             print(f"✅ Auto-tune {algorithm} ({mode}): {len(result)} paramètres optimisés")
             return result

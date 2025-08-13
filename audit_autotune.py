@@ -284,12 +284,23 @@ def analyze_autotune_integration():
     if hasattr(processor, 'auto_tune_functions'):
         auto_tune_mapping = processor.auto_tune_functions
         print(f"\n📋 MAPPING AUTO-TUNE:")
-        print(f"   • {len(auto_tune_mapping)} algorithmes mappés")
-        for algo, method_name in auto_tune_mapping.items():
-            if hasattr(processor, method_name):
-                print(f"   ✅ {algo} → {method_name}")
-            else:
-                print(f"   ❌ {algo} → {method_name} (méthode manquante)")
+        
+        if callable(auto_tune_mapping):
+            print(f"   • Méthode auto_tune_functions détectée (callable)")
+        elif hasattr(auto_tune_mapping, 'items'):
+            # Traiter comme un dictionnaire
+            try:
+                mapping_items = list(auto_tune_mapping.items())
+                print(f"   • {len(mapping_items)} algorithmes mappés")
+                for algo, method_name in mapping_items:
+                    if hasattr(processor, method_name):
+                        print(f"   ✅ {algo} → {method_name}")
+                    else:
+                        print(f"   ❌ {algo} → {method_name} (méthode manquante)")
+            except Exception as e:
+                print(f"   ❌ Erreur lors de l'analyse du mapping: {e}")
+        else:
+            print(f"   ⚠️  Type inattendu pour auto_tune_functions: {type(auto_tune_mapping)}")
     else:
         print(f"\n❌ MAPPING AUTO-TUNE: auto_tune_functions non trouvée")
 

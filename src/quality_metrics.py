@@ -83,19 +83,19 @@ class QualityMetricsAnalyzer:
             # 3. Saturation Analysis
             hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
             saturation = hsv[:,:,1].astype(np.float32) / 255.0
-            metrics.saturation = np.mean(saturation)
+            metrics.saturation = float(np.mean(saturation))
             
             # 4. Brightness Analysis
-            metrics.brightness = mean_luminance
+            metrics.brightness = float(mean_luminance)
             
             # 5. Noise Level Estimation (High-frequency content)
             try:
                 kernel_high = np.array([[-1,-1,-1], [-1,8,-1], [-1,-1,-1]], dtype=np.float32)
                 noise_map = cv2.filter2D(gray, cv2.CV_32F, kernel_high)
-                metrics.noise_level = np.std(noise_map)
+                metrics.noise_level = float(np.std(noise_map))
             except cv2.error:
                 # Fallback simple pour estimation du bruit
-                metrics.noise_level = np.std(gray)
+                metrics.noise_level = float(np.std(gray))
             
             # 6. Color Cast Analysis (Underwater specific)
             b_channel = img_float[:,:,0]  # Blue
@@ -107,7 +107,7 @@ class QualityMetricsAnalyzer:
             # Color cast severity (deviation from neutral)
             neutral_target = (r_mean + g_mean + b_mean) / 3.0
             color_deviation = abs(b_mean - neutral_target) + abs(g_mean - neutral_target) + abs(r_mean - neutral_target)
-            metrics.color_cast = color_deviation / 3.0
+            metrics.color_cast = float(color_deviation / 3.0)
             
             # 7. Underwater Visibility Metric
             # Based on overall clarity and blue/green dominance
@@ -116,17 +116,17 @@ class QualityMetricsAnalyzer:
             
             # High blue/green = poor visibility, balanced = good visibility
             visibility_penalty = abs(blue_dominance - 0.33) + abs(green_dominance - 0.33)
-            metrics.underwater_visibility = max(0, 1.0 - visibility_penalty * 3.0)
+            metrics.underwater_visibility = float(max(0, 1.0 - visibility_penalty * 3.0))
             
             # 8. Detail Preservation (Local standard deviation)
             try:
                 kernel = np.ones((5,5), np.float32) / 25
                 local_mean = cv2.filter2D(gray, cv2.CV_32F, kernel)
                 local_variance = cv2.filter2D(gray**2, cv2.CV_32F, kernel) - local_mean**2
-                metrics.detail_preservation = np.mean(np.sqrt(np.maximum(local_variance, 0)))
+                metrics.detail_preservation = float(np.mean(np.sqrt(np.maximum(local_variance, 0))))
             except cv2.error:
                 # Fallback si filter2D échoue
-                metrics.detail_preservation = np.std(gray)
+                metrics.detail_preservation = float(np.std(gray))
             
             # 9. Overall Quality Score (weighted combination)
             metrics.overall_quality = self._calculate_overall_quality(metrics)
@@ -183,7 +183,7 @@ class QualityBasedAutoTuneOptimizer:
         self.optimization_history = []
     
     def optimize_algorithm_parameters(self, img: np.ndarray, algorithm: str, 
-                                    target_improvements: Dict[str, float] = None) -> OptimizationResult:
+                                    target_improvements: Optional[Dict[str, float]] = None) -> OptimizationResult:
         """
         Optimise les paramètres d'un algorithme basé sur métriques de qualité
         
@@ -340,7 +340,7 @@ class QualityBasedAutoTuneOptimizer:
         return refined_params
     
     def optimize_full_pipeline(self, img: np.ndarray, 
-                             algorithms: List[str] = None) -> Dict[str, OptimizationResult]:
+                             algorithms: Optional[List[str]] = None) -> Dict[str, OptimizationResult]:
         """
         Optimise un pipeline complet d'algorithmes basé sur métriques
         
