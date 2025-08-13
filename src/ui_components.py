@@ -612,6 +612,39 @@ class ParameterPanel(ttk.Frame):
             # Clear sync flag
             self._syncing_auto_tune = False
     
+    def trigger_auto_tune_for_new_image(self):
+        """Trigger auto-tune for all enabled steps when a new image is loaded"""
+        if not self.get_image_callback:
+            print("No image callback available for auto-tune")
+            return
+            
+        original_image = self.get_image_callback()
+        if original_image is None:
+            print("No image available for auto-tune")
+            return
+        
+        print("Triggering auto-tune for new image...")
+        
+        # Get all steps that have auto-tune enabled
+        enabled_steps = []
+        for step_key, frame_data in self.step_frames.items():
+            auto_tune_var = frame_data.get('auto_tune_var')
+            if auto_tune_var and auto_tune_var.get():
+                enabled_steps.append(step_key)
+        
+        print(f"Auto-tune enabled for steps: {enabled_steps}")
+        
+        # Execute auto-tune for enabled steps
+        for step_key in enabled_steps:
+            print(f"Running auto-tune for {step_key}")
+            self._perform_auto_tune_step(step_key)
+        
+        # Update preview after auto-tune
+        if hasattr(self, 'update_callback') and self.update_callback:
+            self.update_callback()
+        
+        print(f"Auto-tune completed for {len(enabled_steps)} steps")
+    
     def reset_step_defaults(self, step_key: str):
         """Reset parameters for a specific step to their default values"""
         try:

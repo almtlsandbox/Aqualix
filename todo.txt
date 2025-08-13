@@ -331,8 +331,30 @@ Système Aqualix v2.2.0 opérationnel en production avec:
 - Tests exhaustifs validés
 - Documentation complète
 
+🆕 CORRECTION CRITIQUE AUTO-TUNE - RÉSOLU (13 août 2025)
+✅ BUG: Auto-tune ne s'appliquait pas au premier chargement d'image - CORRIGÉ
+   → PROBLÈME: Même avec checkboxes cochées, résultat = valeurs par défaut
+   → Il fallait décocher/recocher l'auto-tune global pour l'activer
+   → CAUSE: Auto-tune se déclenchait uniquement sur changement d'état (toggle)
+   
+   → SOLUTION IMPLÉMENTÉE:
+     • Nouveau trigger automatique au chargement d'image
+     • src/main.py: load_image() modifiée pour déclencher auto-tune  
+     • src/ui_components.py: trigger_auto_tune_for_new_image() ajoutée
+     • Détection auto si global auto-tune activé
+     • Exécution auto-tune pour tous les steps cochés
+   
+   → COMPORTEMENT MAINTENANT:
+     ✅ Premier chargement → Auto-tune s'applique automatiquement
+     ✅ Cohérence parfaite entre état checkboxes et résultat
+     ✅ Toggle manuel continue de fonctionner
+     ✅ Expérience utilisateur fluide et intuitive
+
 ═══════════════════════════════════════
 📋 ANCIENS TODOS (TOUS COMPLÉTÉS) :
 ═══════════════════════════════════════
 
-
+Pourquoi j'obtiens the meme rapport de qualité quelque soit les operations que je check / uncheck ??
+Est-ce que les auto-tune tests toutes les methodes, par exemple est-ce que cela teste parmis les differentes methodes de white-balancing?
+Est-ce que le auto-tune de white balancing detecte le type d'eau (ocean versus Lac) pour guider la selection de la meilleure approche?
+Je voudrais une progresse bar qui montre qu'un load image est en cours, ou que des operations de corrections sont en cours.

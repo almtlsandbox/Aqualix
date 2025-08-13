@@ -278,6 +278,11 @@ class ImageVideoProcessorApp:
             # Convert BGR to RGB for display
             self.original_image = cv2.cvtColor(self.original_image, cv2.COLOR_BGR2RGB)
             
+            # Check if auto-tune is enabled and trigger it for new image
+            if hasattr(self.param_panel, 'global_auto_tune_var') and self.param_panel.global_auto_tune_var.get():
+                # Auto-tune is enabled globally, execute auto-tune for active steps
+                self.param_panel.trigger_auto_tune_for_new_image()
+            
             # Update preview
             self.update_preview()
             
@@ -363,7 +368,14 @@ class ImageVideoProcessorApp:
             )
             
             # Mark that full-size processed image needs to be updated when needed
-            self.processed_image = None
+            # CRITICAL FIX: Only clear cache if loading new image, not on parameter changes
+            if self.loading_new_image:
+                self.processed_image = None
+                self.logger.info("Cleared full resolution cache for new image")
+            else:
+                # Parameter change - keep cached image if it exists but mark as potentially outdated
+                if self.processed_image is not None:
+                    self.logger.info("Parameter changed - full resolution cache may be outdated")
             
             # Update preview panel with preview images
             # Pass reset_view=True if loading new image, False if just updating parameters
@@ -462,25 +474,60 @@ class ImageVideoProcessorApp:
             quality_check_module = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(quality_check_module)
             
-            # Get full resolution images for quality analysis
+            # Get original image
             original_full = self.original_image
-            processed_full = self.get_full_resolution_processed_image()
             
-            # If we couldn't get a processed image, try the cached one or process now
-            if processed_full is None:
-                if self.processed_image is not None:
-                    processed_full = self.processed_image
+            # Get processed image - CRITICAL FIX: Use current display state, not reprocess
+            processed_full = None
+            
+            # Option 1: Use preview if it represents current settings (scale up if needed)
+            if self.processed_preview is not None and self.preview_scale_factor is not None:
+                if self.preview_scale_factor < 1.0:
+                    # Scale up preview to original size for quality analysis
+                    original_height, original_width = self.original_image.shape[:2]
+                    processed_full = cv2.resize(
+                        self.processed_preview, 
+                        (original_width, original_height), 
+                        interpolation=cv2.INTER_CUBIC
+                    )
+                    self.logger.info(f"Quality check using scaled preview (factor: {self.preview_scale_factor:.3f})")
                 else:
-                    # Last resort: process the image now for quality analysis
-                    self.logger.info("Processing image for quality analysis...")
-                    try:
-                        processed_full = self.processor.process_image(self.original_image.copy())
-                    except Exception as process_error:
-                        progress_window.destroy()
-                        error_msg = f"Erreur lors du traitement de l'image: {str(process_error)}"
-                        messagebox.showerror(t('error'), error_msg)
-                        self.logger.error(error_msg)
-                        return
+                    # Preview is full resolution, use directly
+                    processed_full = self.processed_preview.copy()
+                    self.logger.info("Quality check using full resolution preview")
+            
+            # Option 2: Use cached full resolution if available
+            if processed_full is None and self.processed_image is not None:
+                processed_full = self.processed_image
+                self.logger.info("Quality check using cached full resolution image")
+            
+            # Option 3: Process with current parameters (LAST RESORT - may be inconsistent)
+            if processed_full is None:
+                self.logger.warning("No processed image available, generating fresh (may be inconsistent)")
+                original_callback = None
+                try:
+                    # Temporarily disable auto-tune to avoid parameter changes
+                    original_callback = self.processor.auto_tune_callback
+                    self.processor.set_auto_tune_callback(lambda step: False)
+                    
+                    processed_full = self.processor.process_image(self.original_image.copy())
+                    
+                    # Restore original callback
+                    self.processor.set_auto_tune_callback(original_callback)
+                    
+                except Exception as process_error:
+                    # Restore original callback in case of error (if it was set)
+                    if original_callback is not None:
+                        try:
+                            self.processor.set_auto_tune_callback(original_callback)
+                        except:
+                            pass  # Ignore secondary errors
+                    
+                    progress_window.destroy()
+                    error_msg = f"Erreur lors du traitement de l'image: {str(process_error)}"
+                    messagebox.showerror(t('error'), error_msg)
+                    self.logger.error(error_msg)
+                    return
             
             # Verify we have both images for comparison
             if processed_full is None:
