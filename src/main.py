@@ -476,8 +476,18 @@ class ImageVideoProcessorApp:
             if self.loading_new_image:
                 self.loading_new_image = False
             
-            # Update pipeline description
-            self.pipeline_panel.update_pipeline(self.processor.get_pipeline_description())
+            # Update pipeline description with water type detection
+            water_type_info = None
+            if hasattr(self, 'original_image') and self.original_image is not None:
+                try:
+                    water_type_info = self.processor.get_water_type(self.original_image)
+                except Exception as e:
+                    self.logger.warning(f"Water type detection failed: {e}")
+            
+            self.pipeline_panel.update_pipeline(
+                self.processor.get_pipeline_description(), 
+                water_type_info
+            )
             
             # Log preview information for debugging
             if self.preview_scale_factor < 1.0:
@@ -993,7 +1003,7 @@ class ImageVideoProcessorApp:
         """Update toolbar button texts"""
         button_texts = [
             t('select_file'), t('select_folder'), t('previous'), t('next'), 
-            None, None, None, t('save_result')  # None for labels and combobox
+            t('quality_check'), t('save_result')  # Added quality_check button
         ]
         
         button_index = 0

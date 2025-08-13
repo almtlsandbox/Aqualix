@@ -874,11 +874,28 @@ class PipelinePanel(ttk.Frame):
         self.text_widget.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         
-    def update_pipeline(self, pipeline_steps: List[Dict[str, str]]):
-        """Update the pipeline description"""
+    def update_pipeline(self, pipeline_steps: List[Dict[str, str]], water_type_info: Optional[tuple] = None):
+        """
+        Update the pipeline description
+        
+        Args:
+            pipeline_steps: Liste des étapes du pipeline
+            water_type_info: Tuple (type_technique, description_fr, description_en, methode_recommandee)
+        """
         self.text_widget.config(state=tk.NORMAL)
         self.text_widget.delete(1.0, tk.END)
         
+        # Afficher les informations sur le type d'eau si disponibles
+        if water_type_info and water_type_info[0] != "unknown" and water_type_info[0] != "error":
+            type_tech, desc_fr, desc_en, methode = water_type_info
+            
+            # Utiliser la description en français par défaut, anglais en fallback
+            water_desc = desc_fr if desc_fr else desc_en
+            
+            self.text_widget.insert(tk.END, f"🌊 {t('detected_environment')}: ", "water_label")
+            self.text_widget.insert(tk.END, f"{water_desc}\n", "water_type")
+            self.text_widget.insert(tk.END, f"   {t('recommended_method')}: {methode}\n\n", "water_method")
+            
         for i, step in enumerate(pipeline_steps, 1):
             self.text_widget.insert(tk.END, f"{i}. {step['name']}\n", "title")
             self.text_widget.insert(tk.END, f"{step['description']}\n\n", "description")
@@ -887,6 +904,9 @@ class PipelinePanel(ttk.Frame):
                 self.text_widget.insert(tk.END, "↓\n", "arrow")
                 
         # Configure tags for formatting
+        self.text_widget.tag_config("water_label", font=('Arial', 10, 'bold'), foreground='#0066CC')
+        self.text_widget.tag_config("water_type", font=('Arial', 10, 'bold'), foreground='#006600')
+        self.text_widget.tag_config("water_method", font=('Arial', 9, 'italic'), foreground='#666666')
         self.text_widget.tag_config("title", font=('Arial', 10, 'bold'))
         self.text_widget.tag_config("description", font=('Arial', 9))
         self.text_widget.tag_config("parameters", font=('Arial', 8, 'italic'))

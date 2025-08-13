@@ -2,6 +2,27 @@
 
 Toutes les modifications importantes du projet Aqualix seront documentées dans ce fichier.
 
+## [2.2.2] - 2025-08-13
+
+### 🔧 Corrections d'Interface
+- **Traduction des boutons de barre d'outils** : Correction du problème où les boutons "Sauvegarder les résultats" et "Contrôle de la qualité" ne changeaient pas de langue
+  - Ajout du bouton `quality_check` manquant dans `update_toolbar_texts()`
+  - Les boutons de la barre d'outils se mettent maintenant correctement à jour lors du changement de langue
+  - Synchronisation parfaite entre sélection de langue et affichage des boutons
+
+## [2.2.1] - 2025-08-11
+
+### 🌊 Nouvelles Fonctionnalités
+- **Détection du Type d'Eau** : Affichage automatique du type d'environnement aquatique détecté
+  - Classification intelligente : Lac/Eau douce, Océan/Eau profonde, Eaux tropicales, Eau claire/Contraste élevé, Environnement standard
+  - Recommandation de méthode de correction optimale selon l'environnement
+  - Affichage intégré dans l'onglet Operations avec traductions FR/EN
+
+### 🔧 Améliorations Techniques
+- **Méthode `get_water_type()`** : Nouvelle méthode publique dans `ImageProcessor` pour la détection d'environnement
+- **Interface utilisateur enrichie** : Le panneau Pipeline affiche maintenant les informations d'environnement détecté
+- **Logique de détection basée sur l'auto-tune** : Utilise la même analyse que le système d'optimisation automatique
+
 ## [2.2.0] - 2025-08-11
 
 ### 🎉 Nouvelles Fonctionnalités

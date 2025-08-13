@@ -70,6 +70,10 @@ class LocalizationManager:
             'preview_title': 'Vue comparative interactive',
             'info_title': 'Informations de l\'image',
             
+            # Water type detection
+            'detected_environment': 'Environnement détecté',
+            'recommended_method': 'Méthode recommandée',
+            
             # Info tabs
             'info_tab_file': 'Fichier',
             'info_tab_properties': 'Propriétés',
@@ -517,6 +521,10 @@ class LocalizationManager:
             'pipeline_title': 'Operations Pipeline', 
             'preview_title': 'Interactive Split View',
             'info_title': 'Image Information',
+            
+            # Water type detection
+            'detected_environment': 'Detected Environment',
+            'recommended_method': 'Recommended method',
             
             # Info tabs
             'info_tab_file': 'File',
