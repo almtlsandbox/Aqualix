@@ -62,6 +62,7 @@ class LocalizationManager:
             'tab_parameters': 'Paramètres',
             'tab_operations': 'Opérations',
             'tab_info': 'Informations',
+            'tab_quality': 'Contrôle Qualité',
             'tab_about': 'À propos',
             
             # Panel titles
@@ -216,6 +217,10 @@ class LocalizationManager:
             'error': 'Erreur',
             
             # Quality Check Dialog
+            'qc_no_analysis': 'Aucune analyse disponible. Cliquez sur "Analyser" pour lancer le contrôle qualité.',
+            'qc_run_analysis': 'Analyser',
+            'qc_analysis_running': 'Analyse en cours...',
+            'qc_last_analysis': 'Dernière analyse:',
             'qc_dialog_title': 'Contrôle Qualité Post-Traitement',
             'qc_overall_score': 'Score Global de Qualité',
             'qc_status_excellent': 'Excellente qualité',
@@ -252,6 +257,29 @@ class LocalizationManager:
             'qc_adjust_gamma_shadows': 'Ajuster le gamma ou relever légèrement les ombres',
             'qc_excessive_red_compensation': 'Compensation rouge excessive',
             'qc_reduce_beer_lambert_red': 'Réduire le coefficient rouge Beer-Lambert',
+            
+            # Precise Recommendations - Beer-Lambert
+            'qc_reduce_red_gain_precise_detailed': 'Réduire "Facteur Rouge" (Beer-Lambert) de 0.1-0.2 unités',
+            'qc_adjust_wb_method_for_red': 'Essayer "Shades of Gray" ou "Grey Edge" pour réduire dominante rouge',
+            'qc_check_beer_lambert_settings': 'Vérifier tous paramètres Beer-Lambert (Rouge, Bleu, Profondeur)',
+            
+            # Precise Recommendations - Saturation
+            'qc_reduce_saturation_limit_precise': 'Réduire "Limite de saturation" (Rééquilibrage) de 0.15-0.25 unités',
+            'qc_enable_luminance_preserve': 'Activer "Préservation Luminance" dans Rééquilibrage Couleur',
+            'qc_check_matrix_coefficients': 'Vérifier coefficients matrice 3x3, réduire RR et RG si élevés',
+            
+            # Precise Recommendations - CLAHE
+            'qc_reduce_clahe_clip_precise': 'Réduire "Limite Clip" (CLAHE) de 1.5-2.5 unités',
+            'qc_increase_clahe_tile_size': 'Augmenter "Taille Tuile" CLAHE de 4x4 à 8x8 ou plus',
+            'qc_reduce_fusion_weights': 'Réduire poids "Contraste" et "Saturation" dans Fusion Multi-échelle',
+            
+            # Precise Recommendations - General
+            'qc_reduce_amplification_factors': 'Réduire tous facteurs d\'amplification (Rouge, Contraste) de 15%',
+            'qc_increase_depth_factor': 'Augmenter "Facteur Profondeur" Beer-Lambert de 0.1-0.2',
+            'qc_consider_preprocessing': 'Considérer prétraitement image (débruitage) avant correction',
+            'qc_adjust_contrast_enhancement_precise': 'Réduire "Poids Contraste" (Fusion) de 0.2-0.3 unités',
+            'qc_optimize_gamma_settings': 'Optimiser paramètres gamma et balance tonale',
+            'qc_preserve_shadow_details': 'Préserver détails ombres - Augmenter "Facteur Profondeur"',
             
             # Quality Metrics Labels
             'qc_unrealistic_colors': 'Couleurs Non-Réalistes',
@@ -514,6 +542,7 @@ class LocalizationManager:
             'tab_parameters': 'Parameters',
             'tab_operations': 'Operations',
             'tab_info': 'Information',
+            'tab_quality': 'Quality Control',
             'tab_about': 'About',
             
             # Panel titles
@@ -668,6 +697,10 @@ class LocalizationManager:
             'error': 'Error',
             
             # Quality Check Dialog
+            'qc_no_analysis': 'No analysis available. Click "Analyze" to run quality control.',
+            'qc_run_analysis': 'Analyze',
+            'qc_analysis_running': 'Analysis in progress...',
+            'qc_last_analysis': 'Last analysis:',
             'qc_dialog_title': 'Post-Processing Quality Check',
             'qc_overall_score': 'Overall Quality Score',
             'qc_status_excellent': 'Excellent quality',
@@ -704,6 +737,29 @@ class LocalizationManager:
             'qc_adjust_gamma_shadows': 'Adjust gamma or slightly lift shadows',
             'qc_excessive_red_compensation': 'Excessive red compensation',
             'qc_reduce_beer_lambert_red': 'Reduce Beer-Lambert red coefficient',
+            
+            # Precise Recommendations - Beer-Lambert
+            'qc_reduce_red_gain_precise_detailed': 'Reduce "Red Factor" (Beer-Lambert) by 0.1-0.2 units',
+            'qc_adjust_wb_method_for_red': 'Try "Shades of Gray" or "Grey Edge" to reduce red dominance',
+            'qc_check_beer_lambert_settings': 'Check all Beer-Lambert parameters (Red, Blue, Depth)',
+            
+            # Precise Recommendations - Saturation
+            'qc_reduce_saturation_limit_precise': 'Reduce "Saturation Limit" (Rebalancing) by 0.15-0.25 units',
+            'qc_enable_luminance_preserve': 'Enable "Preserve Luminance" in Color Rebalancing',
+            'qc_check_matrix_coefficients': 'Check 3x3 matrix coefficients, reduce RR and RG if high',
+            
+            # Precise Recommendations - CLAHE
+            'qc_reduce_clahe_clip_precise': 'Reduce "Clip Limit" (CLAHE) by 1.5-2.5 units',
+            'qc_increase_clahe_tile_size': 'Increase CLAHE "Tile Size" from 4x4 to 8x8 or more',
+            'qc_reduce_fusion_weights': 'Reduce "Contrast" and "Saturation" weights in Multiscale Fusion',
+            
+            # Precise Recommendations - General
+            'qc_reduce_amplification_factors': 'Reduce all amplification factors (Red, Contrast) by 15%',
+            'qc_increase_depth_factor': 'Increase Beer-Lambert "Depth Factor" by 0.1-0.2',
+            'qc_consider_preprocessing': 'Consider image preprocessing (denoising) before correction',
+            'qc_adjust_contrast_enhancement_precise': 'Reduce "Contrast Weight" (Fusion) by 0.2-0.3 units',
+            'qc_optimize_gamma_settings': 'Optimize gamma and tonal balance parameters',
+            'qc_preserve_shadow_details': 'Preserve shadow details - Increase "Depth Factor"',
             
             # Quality Metrics Labels
             'qc_unrealistic_colors': 'Unrealistic Colors',

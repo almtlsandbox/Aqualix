@@ -97,10 +97,18 @@ class ImageVideoProcessorApp:
         # Image info tab
         info_frame = ttk.Frame(self.notebook)
         self.notebook.add(info_frame, text=t('tab_info'))
-        
+
         # Image info panel
         self.info_panel = ImageInfoPanel(info_frame)
         self.info_panel.pack(fill=tk.BOTH, expand=True)
+
+        # Quality control tab
+        quality_frame = ttk.Frame(self.notebook)
+        self.notebook.add(quality_frame, text=t('tab_quality'))
+
+        # Quality control panel
+        from .quality_control_tab import QualityControlTab
+        self.quality_panel = QualityControlTab(quality_frame, self, self.localization_manager)
         
         # About tab
         about_frame = ttk.Frame(self.notebook)
@@ -153,9 +161,6 @@ class ImageVideoProcessorApp:
         )
         self.language_combo.pack(side=tk.LEFT, padx=(0, 10))
         self.language_combo.bind('<<ComboboxSelected>>', self.on_language_change)
-        
-        # Quality Check button  
-        ttk.Button(toolbar, text=t('quality_check'), command=self.run_quality_check).pack(side=tk.RIGHT, padx=(0, 5))
         
         # Save button
         ttk.Button(toolbar, text=t('save_result'), command=self.save_result).pack(side=tk.RIGHT)
@@ -462,154 +467,14 @@ class ImageVideoProcessorApp:
             self.logger.error(f"Error processing full resolution image: {str(e)}")
             return None
     
-    def run_quality_check(self):
-        """Run quality analysis on the processed image"""
-        if self.original_image is None:
-            messagebox.showwarning(
-                t('warning'),
-                "Aucune image chargée pour l'analyse qualité"
-            )
-            return
+    def show_quality_tab(self):
+        """Show the quality control tab and trigger analysis if needed"""
+        # Switch to quality control tab (index 3: Parameters, Operations, Info, Quality)
+        self.notebook.select(3)
         
-        try:
-            # Dynamic import to avoid circular imports
-            import importlib.util
-            import sys
-            from pathlib import Path
-            
-            # Dynamic import of quality check module
-            quality_check_path = Path(__file__).parent / "quality_check.py"
-            spec = importlib.util.spec_from_file_location("quality_check", quality_check_path)
-            if spec is None or spec.loader is None:
-                raise ImportError("Cannot load quality_check module")
-            
-            quality_check_module = importlib.util.module_from_spec(spec)
-            spec.loader.exec_module(quality_check_module)
-            
-            # Get original image
-            original_full = self.original_image
-            
-            # Get processed image - CRITICAL FIX: Use current display state, not reprocess
-            processed_full = None
-            
-            # Option 1: Use preview if it represents current settings (scale up if needed)
-            if self.processed_preview is not None and self.preview_scale_factor is not None:
-                if self.preview_scale_factor < 1.0:
-                    # Scale up preview to original size for quality analysis
-                    original_height, original_width = self.original_image.shape[:2]
-                    processed_full = cv2.resize(
-                        self.processed_preview, 
-                        (original_width, original_height), 
-                        interpolation=cv2.INTER_CUBIC
-                    )
-                    self.logger.info(f"Quality check using scaled preview (factor: {self.preview_scale_factor:.3f})")
-                else:
-                    # Preview is full resolution, use directly
-                    processed_full = self.processed_preview.copy()
-                    self.logger.info("Quality check using full resolution preview")
-            
-            # Option 2: Use cached full resolution if available
-            if processed_full is None and self.processed_image is not None:
-                processed_full = self.processed_image
-                self.logger.info("Quality check using cached full resolution image")
-            
-            # Option 3: Process with current parameters (LAST RESORT - may be inconsistent)
-            if processed_full is None:
-                self.logger.warning("No processed image available, generating fresh (may be inconsistent)")
-                original_callback = None
-                try:
-                    # Temporarily disable auto-tune to avoid parameter changes
-                    original_callback = self.processor.auto_tune_callback
-                    self.processor.set_auto_tune_callback(lambda step: False)
-                    
-                    processed_full = self.processor.process_image(self.original_image.copy())
-                    
-                    # Restore original callback
-                    self.processor.set_auto_tune_callback(original_callback)
-                        
-                except Exception as process_error:
-                    # Restore original callback in case of error (if it was set)
-                    if original_callback is not None:
-                        try:
-                            self.processor.set_auto_tune_callback(original_callback)
-                        except:
-                            pass  # Ignore secondary errors
-                    
-                    error_msg = f"Erreur lors du traitement de l'image: {str(process_error)}"
-                    messagebox.showerror(t('error'), error_msg)
-                    self.logger.error(error_msg)
-                    return
-            
-            # Verify we have both images for comparison
-            if processed_full is None:
-                messagebox.showerror(
-                    t('error'), 
-                    "Impossible de générer l'image traitée pour l'analyse qualité"
-                )
-                return
-            
-            # Initialize quality checker and run analysis
-            quality_checker = quality_check_module.PostProcessingQualityChecker()
-            quality_results = quality_checker.run_all_checks(original_full, processed_full)
-                
-            # Show quality check dialog
-            if quality_results and 'error' not in quality_results:
-                # Get image name for the dialog
-                image_name = "Unknown"
-                if hasattr(self, 'current_file') and self.current_file:
-                    image_name = os.path.basename(self.current_file)
-                
-                # Dynamic import of quality dialog
-                dialog_path = Path(__file__).parent / "quality_check_dialog.py"
-                dialog_spec = importlib.util.spec_from_file_location("quality_check_dialog", dialog_path)
-                if dialog_spec is None or dialog_spec.loader is None:
-                    # Fallback to simple message box
-                    overall_score = quality_checker._calculate_overall_score(quality_results)
-                    messagebox.showinfo(
-                        "Contrôle Qualité",
-                        f"Analyse terminée pour {image_name}\n"
-                        f"Score global: {overall_score:.1f}/10\n\n"
-                        f"Détails disponibles dans les logs."
-                    )
-                else:
-                    dialog_module = importlib.util.module_from_spec(dialog_spec)
-                    dialog_spec.loader.exec_module(dialog_module)
-                    
-                    # Show detailed quality dialog
-                    quality_dialog = dialog_module.QualityCheckDialog(
-                        self.root, 
-                        quality_results, 
-                        image_name, 
-                        self.localization_manager
-                    )
-                    quality_dialog.show()
-                
-                # Log summary
-                overall_score = quality_checker._calculate_overall_score(quality_results)
-                self.logger.info(f"Quality check completed for {image_name}: score {overall_score:.1f}/10")
-                
-                # Log detailed recommendations
-                for category, data in quality_results.items():
-                    if isinstance(data, dict) and 'recommendations' in data:
-                        if data['recommendations']:
-                            rec_texts = [t(rec) for rec in data['recommendations']]
-                            self.logger.info(f"{category} recommendations: {rec_texts}")
-                
-                self.logger.info("Quality check completed successfully")
-            else:
-                error_msg = quality_results.get('error', 'Unknown error') if quality_results else 'Analysis failed'
-                messagebox.showerror(
-                    t('error'),
-                    f"Erreur lors de l'analyse qualité: {error_msg}"
-                )
-                self.logger.error(f"Quality check failed: {error_msg}")
-                
-        except Exception as e:
-            error_msg = f"Erreur lors de l'analyse qualité: {str(e)}"
-            messagebox.showerror(t('error'), error_msg)
-            self.logger.error(error_msg)
-            import traceback
-            self.logger.error(f"Quality check traceback: {traceback.format_exc()}")
+        # If quality panel exists, run analysis
+        if hasattr(self, 'quality_panel') and self.quality_panel:
+            self.quality_panel.run_analysis()
     
     def show_quality_placeholder(self):
         """Placeholder for quality check functionality"""
@@ -846,7 +711,8 @@ class ImageVideoProcessorApp:
         self.notebook.tab(0, text=t('tab_parameters'))
         self.notebook.tab(1, text=t('tab_operations'))
         self.notebook.tab(2, text=t('tab_info'))
-        self.notebook.tab(3, text=t('tab_about'))
+        self.notebook.tab(3, text=t('tab_quality'))  # Quality control tab
+        self.notebook.tab(4, text=t('tab_about'))
         
         # Update toolbar button texts (without recreating)
         self.refresh_toolbar()
@@ -867,6 +733,10 @@ class ImageVideoProcessorApp:
         if hasattr(self, 'about_panel'):
             self.about_panel.refresh_ui()
             
+        # Update quality control tab
+        if hasattr(self, 'quality_panel'):
+            self.quality_panel.refresh_ui()
+            
         # Update preview panel
         if hasattr(self, 'preview_panel'):
             self.preview_panel.refresh_ui()
@@ -886,7 +756,7 @@ class ImageVideoProcessorApp:
         """Update toolbar button texts"""
         button_texts = [
             t('select_file'), t('select_folder'), t('previous'), t('next'), 
-            t('quality_check'), t('save_result')  # Added quality_check button
+            t('save_result')  # Removed quality_check button
         ]
         
         button_index = 0

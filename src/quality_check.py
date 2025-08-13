@@ -98,23 +98,23 @@ class PostProcessingQualityChecker:
         # Calculate red dominance ratio
         red_dominance_ratio = np.mean(red_channel) / max(np.mean(blue_channel), 0.1)
         
-        # Store results
+        # Store results (convert NumPy types to Python types)
         self.analysis_results['unrealistic_colors'] = {
-            'extreme_red_pixels': extreme_red_pixels,
-            'magenta_pixels': magenta_pixels,
-            'red_dominance_ratio': red_dominance_ratio,
+            'extreme_red_pixels': float(extreme_red_pixels),
+            'magenta_pixels': float(magenta_pixels),
+            'red_dominance_ratio': float(red_dominance_ratio),
             'recommendations': []
         }
         
         # Add recommendations based on thresholds
         if extreme_red_pixels > 0.02:  # More than 2% extreme red pixels
-            self.analysis_results['unrealistic_colors']['recommendations'].append('qc_reduce_red_gain')
+            self.analysis_results['unrealistic_colors']['recommendations'].append('qc_reduce_red_gain_precise_detailed')
             
         if magenta_pixels > 0.01:  # More than 1% magenta pixels
-            self.analysis_results['unrealistic_colors']['recommendations'].append('qc_reduce_red_compensation')
+            self.analysis_results['unrealistic_colors']['recommendations'].append('qc_adjust_wb_method_for_red')
             
         if red_dominance_ratio > 1.5:  # Excessive red vs blue ratio
-            self.analysis_results['unrealistic_colors']['recommendations'].append('qc_reduce_beer_lambert_red')
+            self.analysis_results['unrealistic_colors']['recommendations'].append('qc_check_beer_lambert_settings')
     
     def _check_red_channel_analysis(self, img_rgb: np.ndarray):
         """Analyze red channel dominance and distribution"""
@@ -136,9 +136,9 @@ class PostProcessingQualityChecker:
         red_dominant_pixels = np.sum(red_channel > np.maximum(green_channel, blue_channel)) / red_channel.size
         
         self.analysis_results['red_channel_analysis'] = {
-            'red_vs_blue_ratio': red_vs_blue_ratio,
-            'red_dominant_pixels': red_dominant_pixels,
-            'channel_means': (red_mean, green_mean, blue_mean),
+            'red_vs_blue_ratio': float(red_vs_blue_ratio),
+            'red_dominant_pixels': float(red_dominant_pixels),
+            'channel_means': (float(red_mean), float(green_mean), float(blue_mean)),
             'recommendations': []
         }
         
@@ -169,18 +169,18 @@ class PostProcessingQualityChecker:
         mean_saturation = np.mean(saturation)
         
         self.analysis_results['saturation_analysis'] = {
-            'highly_saturated_pixels': highly_saturated,
-            'clipped_saturation': clipped_saturation,
-            'large_saturated_areas': large_saturated_areas,
-            'mean_saturation': mean_saturation,
+            'highly_saturated_pixels': float(highly_saturated),
+            'clipped_saturation': float(clipped_saturation),
+            'large_saturated_areas': float(large_saturated_areas),
+            'mean_saturation': float(mean_saturation),
             'recommendations': []
         }
         
         if clipped_saturation > 0.02:  # More than 2% clipped
-            self.analysis_results['saturation_analysis']['recommendations'].append('qc_reduce_saturation')
+            self.analysis_results['saturation_analysis']['recommendations'].append('qc_reduce_saturation_limit_precise')
             
         if highly_saturated > 0.1:  # More than 10% highly saturated
-            self.analysis_results['saturation_analysis']['recommendations'].append('qc_reduce_saturation')
+            self.analysis_results['saturation_analysis']['recommendations'].append('qc_enable_luminance_preserve')
     
     def _check_color_noise_amplification(self, original_rgb: np.ndarray, processed_rgb: np.ndarray):
         """
@@ -225,16 +225,16 @@ class PostProcessingQualityChecker:
             noise_ratios.append(noise_ratio)
         
         self.analysis_results['color_noise_analysis'] = {
-            'red_noise_amplification': noise_ratios[0],
-            'green_noise_amplification': noise_ratios[1],
-            'blue_noise_amplification': noise_ratios[2],
-            'average_noise_ratio': np.mean(noise_ratios),
+            'red_noise_amplification': float(noise_ratios[0]),
+            'green_noise_amplification': float(noise_ratios[1]),
+            'blue_noise_amplification': float(noise_ratios[2]),
+            'average_noise_ratio': float(np.mean(noise_ratios)),
             'recommendations': []
         }
         
         # Check for excessive noise amplification in red channel (most common)
         if noise_ratios[0] > 1.5:  # 50% increase in red noise
-            self.analysis_results['color_noise_analysis']['recommendations'].append('qc_apply_noise_reduction')
+            self.analysis_results['color_noise_analysis']['recommendations'].append('qc_reduce_amplification_factors')
     
     def _check_halo_artifacts(self, img_bgr: np.ndarray):
         """
@@ -278,14 +278,14 @@ class PostProcessingQualityChecker:
         edge_intensity_var = np.var(gray[edge_regions_mask]) if np.sum(edge_regions_mask) > 0 else 0
         
         self.analysis_results['halo_artifacts'] = {
-            'halo_indicator': halo_indicator,
-            'edge_intensity_variance': edge_intensity_var,
-            'edge_gradient_ratio': edge_gradient_mean / max(overall_gradient_mean, 1),
+            'halo_indicator': float(halo_indicator),
+            'edge_intensity_variance': float(edge_intensity_var),
+            'edge_gradient_ratio': float(edge_gradient_mean / max(overall_gradient_mean, 1)),
             'recommendations': []
         }
         
         if halo_indicator > 0.15:  # Significant brightness difference near edges
-            self.analysis_results['halo_artifacts']['recommendations'].append('qc_reduce_clahe_clip_limit')
+            self.analysis_results['halo_artifacts']['recommendations'].append('qc_reduce_clahe_clip_precise')
     
     def _check_midtone_balance(self, img_lab: np.ndarray):
         """Check for proper midtone balance and shadow detail preservation"""
@@ -313,19 +313,19 @@ class PostProcessingQualityChecker:
         mean_lightness = np.mean(L)
         
         self.analysis_results['midtone_balance'] = {
-            'shadow_ratio': shadow_ratio,
-            'midtone_ratio': midtone_ratio,
-            'highlight_ratio': highlight_ratio,
-            'mean_lightness': mean_lightness,
+            'shadow_ratio': float(shadow_ratio),
+            'midtone_ratio': float(midtone_ratio),
+            'highlight_ratio': float(highlight_ratio),
+            'mean_lightness': float(mean_lightness),
             'shadow_detail_preserved': shadow_detail_preserved,
             'recommendations': []
         }
         
         if not shadow_detail_preserved:
-            self.analysis_results['midtone_balance']['recommendations'].append('qc_adjust_gamma_shadows')
+            self.analysis_results['midtone_balance']['recommendations'].append('qc_preserve_shadow_details')
             
         if midtone_ratio < 0.3:  # Too much contrast, not enough midtones
-            self.analysis_results['midtone_balance']['recommendations'].append('qc_reduce_contrast_enhancement')
+            self.analysis_results['midtone_balance']['recommendations'].append('qc_adjust_contrast_enhancement_precise')
     
     def _calculate_quality_improvements(self, original: np.ndarray, processed: np.ndarray):
         """Calculate quantitative quality improvements"""
@@ -353,11 +353,11 @@ class PostProcessingQualityChecker:
             color_enhancement = (proc_color_var - orig_color_var) / max(orig_color_var, 1)
             
             self.analysis_results['quality_improvements'] = {
-                'contrast_improvement': contrast_improvement,
-                'entropy_improvement': entropy_improvement,
-                'color_enhancement': color_enhancement,
-                'original_contrast': orig_contrast,
-                'processed_contrast': proc_contrast,
+                'contrast_improvement': float(contrast_improvement),
+                'entropy_improvement': float(entropy_improvement),
+                'color_enhancement': float(color_enhancement),
+                'original_contrast': float(orig_contrast),
+                'processed_contrast': float(proc_contrast),
                 'recommendations': []
             }
             

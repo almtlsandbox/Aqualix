@@ -564,24 +564,36 @@ class QualityCheckDialog:
                 f.write(f"\n{section_title}\n")
                 f.write("-" * len(section_title) + "\n")
                 
-                for key, value in section_data.items():
-                    if key == 'recommendations':
-                        continue
-                        
-                    label = self.loc.t(f'qc_{key}', default=key.replace('_', ' ').title())
-                    if isinstance(value, float):
-                        f.write(f"{label}: {value:.3f}\n")
-                    elif isinstance(value, (list, tuple)) and len(value) == 3:
-                        f.write(f"{label}: R:{value[0]:.1f} G:{value[1]:.1f} B:{value[2]:.1f}\n")
-                    else:
-                        f.write(f"{label}: {value}\n")
-                
-                # Add recommendations
-                if 'recommendations' in section_data and section_data['recommendations']:
-                    f.write(f"\n{self.loc.t('qc_recommendations')}:\n")
-                    for rec in section_data['recommendations']:
-                        rec_text = self.loc.t(rec, default=rec)
-                        f.write(f"  • {rec_text}\n")
+                # Handle different data types
+                if isinstance(section_data, list):
+                    # Handle list of recommendations
+                    for item in section_data:
+                        item_text = self.loc.t(item, default=item)
+                        f.write(f"  • {item_text}\n")
+                elif isinstance(section_data, dict):
+                    # Handle dictionary data
+                    for key, value in section_data.items():
+                        if key == 'recommendations':
+                            continue
+                            
+                        label = self.loc.t(f'qc_{key}', default=key.replace('_', ' ').title())
+                        if isinstance(value, float):
+                            f.write(f"{label}: {value:.3f}\n")
+                        elif isinstance(value, (list, tuple)) and len(value) == 3:
+                            f.write(f"{label}: R:{value[0]:.1f} G:{value[1]:.1f} B:{value[2]:.1f}\n")
+                        else:
+                            f.write(f"{label}: {value}\n")
+                    
+                    # Add recommendations for dict sections
+                    if 'recommendations' in section_data and section_data['recommendations']:
+                        f.write(f"\n{self.loc.t('qc_recommendations')}:\n")
+                        for rec in section_data['recommendations']:
+                            rec_text = self.loc.t(rec, default=rec)
+                            f.write(f"  • {rec_text}\n")
+                else:
+                    # Handle other data types
+                    f.write(f"{section_data}\n")
+                    
                 f.write("\n")
             
             # Summary recommendations
