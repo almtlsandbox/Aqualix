@@ -1655,7 +1655,7 @@ class AboutPanel(ttk.Frame):
                            font=('Arial', 18, 'bold'), foreground='#2E8B57')
         app_name.pack()
         
-        version_label = ttk.Label(title_frame, text=f"Version {AUTHOR_INFO['version']}", 
+        version_label = ttk.Label(title_frame, text=f"Version {APP_INFO['version']}", 
                                 font=('Arial', 12), foreground='gray')
         version_label.pack()
         
@@ -1686,11 +1686,11 @@ class AboutPanel(ttk.Frame):
                               font=('Arial', 10), foreground='#0066CC')
         email_label.pack(anchor='w', padx=(10, 0))
         
-        website_label = ttk.Label(contact_frame, text=f"🌐 {AUTHOR_INFO['website']}", 
+        website_label = ttk.Label(contact_frame, text=f"🌐 {APP_INFO['website']}", 
                                 font=('Arial', 10), foreground='#0066CC')
         website_label.pack(anchor='w', padx=(10, 0))
         
-        github_label = ttk.Label(contact_frame, text=f"💻 {AUTHOR_INFO['github']}", 
+        github_label = ttk.Label(contact_frame, text=f"💻 {APP_INFO['website']}", 
                                font=('Arial', 10), foreground='#0066CC')
         github_label.pack(anchor='w', padx=(10, 0))
         
@@ -1725,7 +1725,7 @@ class AboutPanel(ttk.Frame):
                                 font=('Arial', 10, 'bold'))
         license_label.pack(anchor='w')
         
-        copyright_text = f"Copyright © {AUTHOR_INFO['year']} {AUTHOR_INFO['name']} - {t('about_copyright').split('©')[1].strip()}"
+        copyright_text = f"{APP_INFO['copyright']}"
         copyright_label = ttk.Label(license_frame, text=copyright_text, 
                                   font=('Arial', 9), foreground='gray')
         copyright_label.pack(anchor='w', pady=(5, 0))

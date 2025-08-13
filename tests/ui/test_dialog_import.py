@@ -7,7 +7,7 @@ import sys
 from pathlib import Path
 
 # Add src to path
-sys.path.append(str(Path(__file__).parent / 'src'))
+sys.path.append(str(Path(__file__).parent.parent.parent))
 
 def test_dialog_import():
     """Test that the quality check dialog can be imported and initialized"""

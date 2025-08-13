@@ -1781,6 +1781,9 @@ class ImageProcessor:
             
             optimized_params = {}
             
+            # Enable white balance by default
+            optimized_params['white_balance_enabled'] = True
+            
             # Choose optimal white balance method based on color characteristics
             if g_ratio > 0.4:  # Strong green cast (lake/freshwater)
                 optimized_params['white_balance_method'] = 'lake_green_water'
@@ -1796,10 +1799,21 @@ class ImageProcessor:
                 optimized_params['shades_of_gray_norm'] = 6
                 optimized_params['shades_of_gray_percentile'] = 95
                 optimized_params['shades_of_gray_max_adjustment'] = min(3.0, 2.0 + (0.33 - r_ratio) * 3.0)
-            else:  # Balanced colors
-                optimized_params['white_balance_method'] = 'white_patch'
-                optimized_params['white_patch_percentile'] = 99
-                optimized_params['white_patch_max_adjustment'] = 1.5
+            else:  # Balanced colors or high contrast scenes
+                # Check if grey-edge might be better for high detail scenes
+                img_gray = cv2.cvtColor(img_float, cv2.COLOR_BGR2GRAY)
+                edges = cv2.Laplacian(img_gray, cv2.CV_64F)
+                edge_strength = np.std(edges)
+                
+                if edge_strength > 0.1:  # High detail/contrast scene
+                    optimized_params['white_balance_method'] = 'grey_edge'
+                    optimized_params['grey_edge_norm'] = 1
+                    optimized_params['grey_edge_sigma'] = 1.0
+                    optimized_params['grey_edge_max_adjustment'] = 2.0
+                else:  # Standard case
+                    optimized_params['white_balance_method'] = 'white_patch'
+                    optimized_params['white_patch_percentile'] = 99
+                    optimized_params['white_patch_max_adjustment'] = 1.5
             
             return optimized_params
             
@@ -1830,6 +1844,9 @@ class ImageProcessor:
             
             optimized_params = {}
             
+            # Enable UDCP by default for underwater images
+            optimized_params['udcp_enabled'] = True
+            
             # Adjust omega based on water clarity (gentle values)
             if turbidity > 0.15:  # Murky water
                 optimized_params['udcp_omega'] = 0.4  # Very gentle haze removal
@@ -1851,13 +1868,13 @@ class ImageProcessor:
             
             # Adjust guided filter parameters
             optimized_params['udcp_guided_radius'] = 30 if turbidity > 0.1 else 60
-            optimized_params['udcp_guided_eps'] = 0.01 if contrast > 0.3 else 0.001
+            optimized_params['udcp_guided_epsilon'] = 0.01 if contrast > 0.3 else 0.001
             
             # Enhance contrast for low-contrast images
             if contrast < 0.15:
-                optimized_params['udcp_enhance_contrast'] = min(1.5, 1.0 + (0.2 - contrast) * 2.0)
+                optimized_params['udcp_enhance_factor'] = min(1.5, 1.0 + (0.2 - contrast) * 2.0)
             else:
-                optimized_params['udcp_enhance_contrast'] = 1.0
+                optimized_params['udcp_enhance_factor'] = 1.0
                 
             return optimized_params
             
@@ -1892,6 +1909,9 @@ class ImageProcessor:
             overall_darkness = 1.0 - np.mean([r_mean, g_mean, b_mean])
             
             optimized_params = {}
+            
+            # Enable Beer-Lambert correction by default for underwater images
+            optimized_params['beer_lambert_enabled'] = True
             
             # Depth factor based on overall image darkness
             optimized_params['beer_lambert_depth_factor'] = min(2.0, 0.5 + overall_darkness * 2.0)
@@ -1941,6 +1961,9 @@ class ImageProcessor:
             sat_std = np.std(s)
             
             optimized_params = {}
+            
+            # Enable color rebalancing by default
+            optimized_params['color_rebalance_enabled'] = True
             
             # Adjust diagonal elements (main channel gains)
             optimized_params['color_rebalance_rr'] = min(2.0, 1.0 + (1.0 - sat_mean) * 0.5)
@@ -2009,6 +2032,15 @@ class ImageProcessor:
             
             optimized_params = {}
             
+            # Enable histogram equalization by default
+            optimized_params['hist_eq_enabled'] = True
+            
+            # Choose method based on image characteristics
+            if contrast_std < 0.1:  # Very low contrast - use global
+                optimized_params['hist_eq_method'] = 'global'
+            else:  # Normal/high contrast - use CLAHE
+                optimized_params['hist_eq_method'] = 'clahe'
+            
             # Adjust clip limit based on contrast characteristics
             if contrast_std < 0.15:  # Low contrast image
                 optimized_params['hist_eq_clip_limit'] = min(4.0, 2.0 + (0.2 - contrast_std) * 10.0)
@@ -2068,6 +2100,9 @@ class ImageProcessor:
             edge_density = np.sum(edges > 0) / (edges.shape[0] * edges.shape[1])
             
             optimized_params = {}
+            
+            # Enable multiscale fusion by default for enhanced results
+            optimized_params['multiscale_fusion_enabled'] = True
             
             # Adjust pyramid levels based on image size and detail
             height, width = img_gray.shape
@@ -2213,8 +2248,9 @@ class ImageProcessor:
     def _enhanced_auto_tune_udcp(self, img: np.ndarray) -> dict:
         """
         Enhanced auto-tune UDCP basé sur:
-        - Drews et al. (2013): "Transmission Estimation in Underwater Images"
+        - Drews et al. (2013): "Transmission Estimation in Underwater Images"  
         - Carlevaris-Bianco et al. (2010): "Initial Results in Underwater Single Image Dehazing"
+        - Berman et al. (2017): "Underwater Single Image Color Restoration using Haze-Lines"
         """
         try:
             if img is None or img.size == 0:
@@ -2223,82 +2259,90 @@ class ImageProcessor:
             img_float = img.astype(np.float32) / 255.0
             h, w = img.shape[:2]
             
-            # 1. Estimation de profondeur relative (Drews method)
-            # Dark channel simple pour estimation grossière
-            min_channel = np.min(img_float, axis=2)
-            dark_channel_global = np.mean(min_channel)
+            # 1. Water type classification (Jerlov water types)
+            b_channel = img_float[:,:,0]  # Blue (BGR)
+            g_channel = img_float[:,:,1]  # Green
+            r_channel = img_float[:,:,2]  # Red
             
-            # Gradient d'intensité pour estimation locale de clarté
+            # Color ratios for water type estimation
+            bg_ratio = np.mean(b_channel) / (np.mean(g_channel) + 1e-6)
+            br_ratio = np.mean(b_channel) / (np.mean(r_channel) + 1e-6)
+            
+            # Turbidity estimation using local variance
+            kernel = np.ones((15,15), np.float32) / 225
             gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-            grad_x = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=3)
-            grad_y = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=3)
-            gradient_magnitude = np.sqrt(grad_x**2 + grad_y**2)
-            avg_gradient = np.mean(gradient_magnitude)
+            mean_filtered = cv2.filter2D(gray.astype(np.float32), -1, kernel)
+            turbidity = np.mean(np.abs(gray.astype(np.float32) - mean_filtered)) / 255.0
             
-            # 2. Analyse spectrale pour omega (Drews method)
-            # Analyse de la distribution des couleurs
-            b_channel, g_channel, r_channel = cv2.split(img_float)
+            # Contrast analysis
+            contrast_std = np.std(gray) / 255.0
             
-            # Ratio blue/red pour estimer l'atténuation spectrale
-            safe_r = np.maximum(r_channel, 0.01)  # Éviter division par 0
-            blue_red_ratio = np.mean(b_channel / safe_r)
+            # Edge analysis for detail preservation
+            edges = cv2.Canny(gray, 50, 150)
+            edge_density = np.sum(edges > 0) / (edges.shape[0] * edges.shape[1])
             
-            # Variance des canaux pour mesurer la turbidité
-            r_var = np.var(r_channel)
-            g_var = np.var(g_channel)
-            b_var = np.var(b_channel)
-            color_variance = np.mean([r_var, g_var, b_var])
-            
-            # 3. Noise level estimation pour epsilon (Carlevaris-Bianco method)
-            # Utilisation du Laplacian pour estimer le bruit
-            laplacian = cv2.Laplacian(gray, cv2.CV_64F)
-            noise_estimate = np.var(laplacian)
-            
-            # 4. Paramètres optimisés
             optimized_params = {}
             
-            # Omega adaptatif basé sur analyse spectrale - Corrigé pour être moins agressif
-            base_omega = 0.75  # Réduit de 0.85 à 0.75 pour meilleur équilibre visuel
-            if blue_red_ratio > 1.4:  # Eau très bleue - forte atténuation rouge
-                optimized_params['omega'] = min(0.85, base_omega + 0.1)  # Max réduit de 0.95 à 0.85
-            elif blue_red_ratio < 0.8:  # Eau verte/trouble - moins d'atténuation
-                optimized_params['omega'] = max(0.6, base_omega - 0.15)  # Min réduit de 0.7 à 0.6
-            else:  # Eau claire normale - correspondant à votre observation 0.70
-                optimized_params['omega'] = 0.7  # Fixé à 0.7 selon retour utilisateur
+            # Enable UDCP with enhanced analysis
+            optimized_params['udcp_enabled'] = True
             
-            # t0 basé sur estimation de profondeur
-            base_t0 = 0.15  # Nouveau défaut littérature-basé
-            depth_factor = 1 - dark_channel_global  # Plus sombre = plus profond
-            if depth_factor > 0.8:  # Image très sombre - probablement profonde
-                optimized_params['t0'] = min(0.25, base_t0 + 0.1)
-            elif depth_factor < 0.4:  # Image claire - probablement peu profonde
-                optimized_params['t0'] = max(0.08, base_t0 - 0.07)
+            # Enhanced omega estimation (Drews method + Berman improvements)
+            if bg_ratio > 1.2 and br_ratio > 2.0:  # Clear blue water
+                optimized_params['udcp_omega'] = 0.7 + min(0.15, turbidity * 0.5)
+            elif turbidity > 0.15:  # Murky/green water  
+                optimized_params['udcp_omega'] = 0.4 + min(0.2, contrast_std * 0.8)
+            else:  # Medium clarity
+                optimized_params['udcp_omega'] = 0.5 + min(0.1, (br_ratio - 1.0) * 0.2)
+            
+            # Enhanced t0 estimation based on scene depth indicators
+            dark_channel = np.min(img_float, axis=2)
+            dark_mean = np.mean(dark_channel)
+            dark_std = np.std(dark_channel)
+            
+            # Adaptive t0 based on dark channel statistics
+            if dark_std < 0.1:  # Uniform scene (possibly distant)
+                optimized_params['udcp_t0'] = max(0.05, min(0.25, 0.1 + dark_mean * 0.6))
+            else:  # Variable scene depth
+                optimized_params['udcp_t0'] = max(0.08, min(0.2, 0.1 + dark_mean * 0.4))
+            
+            # Enhanced window size based on image characteristics
+            base_window = 7 if min(w, h) < 800 else 11
+            if edge_density > 0.15:  # High detail image
+                optimized_params['udcp_window_size'] = max(5, base_window - 2)
+            elif turbidity > 0.12:  # Turbid water needs larger window
+                optimized_params['udcp_window_size'] = min(15, base_window + 4)
             else:
-                optimized_params['t0'] = base_t0
+                optimized_params['udcp_window_size'] = base_window
             
-            # Window size adaptatif selon résolution ET gradient
-            base_window = max(15, min(h, w) // 40)  # Adapté à la résolution
-            if avg_gradient > 30:  # Beaucoup de détails fins
-                optimized_params['window_size'] = max(9, base_window - 6)
-            elif avg_gradient < 15:  # Peu de détails
-                optimized_params['window_size'] = min(25, base_window + 8)
-            else:
-                optimized_params['window_size'] = base_window
+            # Enhanced guided filter parameters (Carlevaris-Bianco method)
+            # Radius adaptation based on image size and content
+            if edge_density > 0.1:  # Preserve fine details
+                optimized_params['udcp_guided_radius'] = min(40, max(20, int(min(w, h) / 25)))
+            else:  # Smoother filtering for low detail
+                optimized_params['udcp_guided_radius'] = min(80, max(40, int(min(w, h) / 15)))
             
-            # Epsilon pour guided filter basé sur noise estimation
-            base_epsilon = 0.001  # Nouveau défaut littérature-basé
-            if noise_estimate > 100:  # Image très bruitée
-                optimized_params['guided_filter_epsilon'] = min(0.01, base_epsilon * 10)
-            elif noise_estimate < 20:  # Image peu bruitée
-                optimized_params['guided_filter_epsilon'] = max(0.0001, base_epsilon / 2)
-            else:
-                optimized_params['guided_filter_epsilon'] = base_epsilon
+            # Epsilon adaptation based on noise estimation
+            laplacian = cv2.Laplacian(gray, cv2.CV_64F)
+            noise_estimate = np.var(laplacian) / (255.0**2)
             
-            # Logging
-            print(f"Enhanced UDCP Auto-tune: depth_factor={depth_factor:.3f}, "
-                  f"blue_red_ratio={blue_red_ratio:.3f}, "
-                  f"noise_est={noise_estimate:.1f}, "
-                  f"params={optimized_params}")
+            if noise_estimate > 0.001:  # Noisy image
+                optimized_params['udcp_guided_epsilon'] = min(0.01, max(0.001, noise_estimate * 10))
+            else:  # Clean image
+                optimized_params['udcp_guided_epsilon'] = max(0.0001, min(0.001, noise_estimate * 5))
+            
+            # Enhanced contrast factor based on image analysis
+            histogram = cv2.calcHist([gray], [0], None, [256], [0, 256])
+            hist_norm = histogram / (h * w)
+            
+            # Check for low contrast (concentrated histogram)
+            middle_concentration = np.sum(hist_norm[64:192])  # Middle 50%
+            
+            if middle_concentration > 0.7:  # Low contrast
+                optimized_params['udcp_enhance_factor'] = min(2.0, 1.2 + (0.8 - contrast_std) * 1.5)
+            elif contrast_std < 0.15:  # Very low contrast
+                optimized_params['udcp_enhance_factor'] = min(1.8, 1.0 + (0.2 - contrast_std) * 4.0)
+            else:  # Normal/high contrast
+                optimized_params['udcp_enhance_factor'] = max(1.0, 1.2 - (contrast_std - 0.15) * 1.0)
             
             return optimized_params
             
@@ -2311,95 +2355,490 @@ class ImageProcessor:
         Enhanced auto-tune Beer-Lambert basé sur:
         - Chiang & Chen (2012): "Wavelength Compensation and Dehazing"
         - McGlamery (1980): "Computer Model for Underwater Camera Systems"
+        - Mobley (1994): "Light and Water: Radiative Transfer in Natural Waters"
         """
         try:
             if img is None or img.size == 0:
                 return {}
             
             img_float = img.astype(np.float32) / 255.0
+            h, w = img.shape[:2]
             
-            # 1. Coefficients d'absorption spectrale réels de l'eau (McGlamery)
-            # Longueurs d'onde approximatives: R=650nm, G=550nm, B=450nm
-            # Coefficients en m^-1 (eau pure + particules typiques)
-            absorption_coeffs = {
-                'red': 0.45,    # Fort absorption du rouge
-                'green': 0.12,  # Absorption modérée du vert  
-                'blue': 0.05    # Faible absorption du bleu
-            }
+            # 1. Spectral analysis based on Mobley's optical properties
+            b_channel = img_float[:,:,0]  # Blue (BGR)
+            g_channel = img_float[:,:,1]  # Green
+            r_channel = img_float[:,:,2]  # Red
             
-            # 2. Analyse de la perte couleur par canal
-            b_channel, g_channel, r_channel = cv2.split(img_float)
+            # Channel statistics for attenuation analysis
+            r_mean, r_std = np.mean(r_channel), np.std(r_channel)
+            g_mean, g_std = np.mean(g_channel), np.std(g_channel)
+            b_mean, b_std = np.mean(b_channel), np.std(b_channel)
             
-            # Moyennes des canaux pour estimer l'atténuation
-            r_mean = np.mean(r_channel)
-            g_mean = np.mean(g_channel)  
-            b_mean = np.mean(b_channel)
+            # 2. Water type classification using spectral ratios
+            # Safe division to avoid numerical issues
+            safe_b = np.maximum(b_mean, 0.01)
+            safe_g = np.maximum(g_mean, 0.01)
             
-            # 3. Estimation de distance relative (Chiang & Chen method)
-            # Plus l'image est sombre, plus la distance est importante
-            overall_brightness = (r_mean + g_mean + b_mean) / 3.0
-            darkness_factor = 1.0 - overall_brightness
+            rg_ratio = r_mean / safe_g  # Red/Green ratio
+            rb_ratio = r_mean / safe_b  # Red/Blue ratio  
+            gb_ratio = g_mean / safe_b  # Green/Blue ratio
             
-            # Analyse du ratio spectral pour raffiner l'estimation
-            safe_b_mean = max(b_mean, 0.01)
-            red_blue_ratio = r_mean / safe_b_mean
-            green_blue_ratio = g_mean / safe_b_mean
+            # 3. Depth estimation using Beer-Lambert exponential decay
+            # Overall brightness loss indicates depth/distance
+            overall_intensity = (r_mean + g_mean + b_mean) / 3.0
+            darkness_factor = 1.0 - overall_intensity
             
-            # 4. Modélisation du scattering (McGlamery)
-            # Estimation du scattering via analyse de la variance locale
+            # Spectral slope analysis (Chiang & Chen method)
+            spectral_slope = (b_mean - r_mean) / (safe_b + r_mean)
+            
+            # 4. Scattering analysis via local variance
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
             kernel = np.ones((15,15), np.float32) / 225
-            r_smooth = cv2.filter2D(r_channel, -1, kernel)
-            g_smooth = cv2.filter2D(g_channel, -1, kernel) 
-            b_smooth = cv2.filter2D(b_channel, -1, kernel)
+            mean_filtered = cv2.filter2D(gray.astype(np.float32), -1, kernel)
+            scattering_estimate = np.mean(np.abs(gray.astype(np.float32) - mean_filtered)) / 255.0
             
-            # Différence entre original et lissé = scattering approximatif
-            r_scatter = np.mean(np.abs(r_channel - r_smooth))
-            g_scatter = np.mean(np.abs(g_channel - g_smooth))
-            b_scatter = np.mean(np.abs(b_channel - b_smooth))
+            # 5. Turbidity classification
+            color_variance = np.mean([r_std, g_std, b_std])
+            if color_variance < 0.1 and scattering_estimate < 0.05:
+                water_type = "clear_oceanic"
+            elif gb_ratio > 1.3:
+                water_type = "green_coastal"  
+            elif scattering_estimate > 0.12:
+                water_type = "turbid"
+            else:
+                water_type = "standard_underwater"
             
-            # 5. Paramètres optimisés
             optimized_params = {}
             
-            # Depth factor basé sur darkness ET analyse spectrale
-            base_depth = 0.7  # Nouveau défaut littérature-basé
-            spectral_depth_indicator = 1.0 - red_blue_ratio  # Plus faible = plus profond
-            combined_depth = (darkness_factor + spectral_depth_indicator) / 2.0
+            # Enable Beer-Lambert with enhanced analysis
+            optimized_params['beer_lambert_enabled'] = True
             
-            if combined_depth > 0.8:  # Très profond/lointain
-                optimized_params['depth_factor'] = min(1.2, base_depth + 0.5)
-            elif combined_depth < 0.3:  # Peu profond/proche  
-                optimized_params['depth_factor'] = max(0.3, base_depth - 0.4)
+            # Enhanced depth factor estimation
+            base_depth = 0.15
+            if water_type == "clear_oceanic":
+                depth_multiplier = 1.0 + darkness_factor * 1.5
+            elif water_type == "turbid":
+                depth_multiplier = 0.8 + darkness_factor * 2.0  # More aggressive for turbid
             else:
-                optimized_params['depth_factor'] = base_depth + (combined_depth - 0.5) * 0.6
+                depth_multiplier = 1.0 + darkness_factor * 1.8
             
-            # Coefficients d'atténuation basés sur coefficients réels
-            # Ajustés selon les conditions observées de l'image
-            attenuation_scale = 1.0 + darkness_factor  # Plus sombre = plus d'atténuation
+            optimized_params['beer_lambert_depth_factor'] = min(1.0, base_depth * depth_multiplier)
             
-            optimized_params['red_loss'] = min(0.95, 
-                absorption_coeffs['red'] * attenuation_scale + r_scatter * 2.0)
-            optimized_params['green_loss'] = min(0.6, 
-                absorption_coeffs['green'] * attenuation_scale + g_scatter * 2.0) 
-            optimized_params['blue_loss'] = min(0.3,
-                absorption_coeffs['blue'] * attenuation_scale + b_scatter * 2.0)
+            # Enhanced spectral coefficients (McGlamery + empirical adjustments)
+            if water_type == "clear_oceanic":
+                # Clear blue water - standard attenuation
+                red_loss = max(0, 0.5 - rb_ratio * 0.3)
+                optimized_params['beer_lambert_red_coeff'] = min(2.0, 0.6 + red_loss * 2.0)
+                optimized_params['beer_lambert_green_coeff'] = min(2.0, 0.3 + max(0, 0.4 - rg_ratio) * 1.5)
+                optimized_params['beer_lambert_blue_coeff'] = min(1.0, 0.1 + max(0, 0.3 - b_mean) * 0.8)
+                
+            elif water_type == "green_coastal":
+                # Green water - different attenuation profile
+                optimized_params['beer_lambert_red_coeff'] = min(2.0, 0.8 + (0.5 - r_mean) * 2.5)
+                optimized_params['beer_lambert_green_coeff'] = min(2.0, 0.4 + max(0, gb_ratio - 1.2) * 0.8)
+                optimized_params['beer_lambert_blue_coeff'] = min(1.0, 0.15 + max(0, 0.4 - b_mean) * 1.2)
+                
+            elif water_type == "turbid":
+                # Turbid water - strong scattering affects all channels
+                turbidity_factor = min(1.0, scattering_estimate * 8.0)
+                optimized_params['beer_lambert_red_coeff'] = min(2.0, 0.7 + turbidity_factor * 0.8)
+                optimized_params['beer_lambert_green_coeff'] = min(2.0, 0.4 + turbidity_factor * 0.6)
+                optimized_params['beer_lambert_blue_coeff'] = min(1.0, 0.2 + turbidity_factor * 0.5)
+                
+            else:  # standard_underwater
+                # Balanced underwater conditions
+                spectral_loss = max(0, 0.6 - overall_intensity)
+                optimized_params['beer_lambert_red_coeff'] = min(2.0, 0.6 + spectral_loss * 2.0)
+                optimized_params['beer_lambert_green_coeff'] = min(2.0, 0.3 + spectral_loss * 1.2)
+                optimized_params['beer_lambert_blue_coeff'] = min(1.0, 0.1 + spectral_loss * 0.8)
             
-            # Facteur de compensation global
-            compensation_strength = min(2.5, 1.0 + combined_depth * 1.5)
-            if 'red_loss' in optimized_params:
-                optimized_params['red_loss'] *= compensation_strength
-                optimized_params['green_loss'] *= compensation_strength  
-                optimized_params['blue_loss'] *= compensation_strength
+            # Enhanced enhancement factor based on overall correction needed
+            total_correction_needed = (
+                optimized_params['beer_lambert_red_coeff'] * (0.5 - r_mean) +
+                optimized_params['beer_lambert_green_coeff'] * (0.4 - g_mean) +
+                optimized_params['beer_lambert_blue_coeff'] * (0.3 - b_mean)
+            ) / 3.0
             
-            # Logging
-            print(f"Enhanced Beer-Lambert Auto-tune: "
-                  f"depth={combined_depth:.3f}, "
-                  f"spectral_ratios=R/B:{red_blue_ratio:.3f}, G/B:{green_blue_ratio:.3f}, "
-                  f"params={optimized_params}")
+            base_enhance = 1.5
+            if total_correction_needed > 0.3:
+                optimized_params['beer_lambert_enhance_factor'] = min(3.0, base_enhance + total_correction_needed * 2.0)
+            elif total_correction_needed < 0.1:
+                optimized_params['beer_lambert_enhance_factor'] = max(1.0, base_enhance - 0.3)
+            else:
+                optimized_params['beer_lambert_enhance_factor'] = base_enhance + total_correction_needed * 1.0
             
             return optimized_params
             
         except Exception as e:
             print(f"Enhanced auto-tune Beer-Lambert error: {e}")
+            return {}
+    def _enhanced_auto_tune_color_rebalancing(self, img: np.ndarray) -> dict:
+        """
+        Enhanced auto-tune Color Rebalancing basé sur:
+        - Peng & Cosman (2017): "Underwater Image Enhancement"
+        - Li et al. (2018): "Adaptive Color Correction"
+        - Emberton et al. (2015): "Underwater Enhancement via Compensation"
+        """
+        try:
+            if img is None or img.size == 0:
+                return {}
+            
+            img_float = img.astype(np.float32) / 255.0
+            h, w = img.shape[:2]
+            
+            # 1. Channel analysis for underwater color cast detection
+            b_channel = img_float[:,:,0]  # Blue
+            g_channel = img_float[:,:,1]  # Green
+            r_channel = img_float[:,:,2]  # Red
+            
+            # Channel statistics
+            r_mean, r_std = np.mean(r_channel), np.std(r_channel)
+            g_mean, g_std = np.mean(g_channel), np.std(g_channel)
+            b_mean, b_std = np.mean(b_channel), np.std(b_channel)
+            
+            # 2. Color cast analysis (Peng & Cosman method)
+            # Safe division to avoid numerical issues
+            safe_r = max(r_mean, 0.01)
+            safe_g = max(g_mean, 0.01)
+            safe_b = max(b_mean, 0.01)
+            
+            # Color dominance ratios
+            blue_dominance = b_mean / (r_mean + g_mean + b_mean)
+            green_dominance = g_mean / (r_mean + g_mean + b_mean)
+            red_dominance = r_mean / (r_mean + g_mean + b_mean)
+            
+            # Color cast severity
+            bg_ratio = b_mean / safe_g
+            br_ratio = b_mean / safe_r
+            gr_ratio = g_mean / safe_r
+            
+            # 3. Water environment classification
+            if blue_dominance > 0.45 and bg_ratio > 1.2:
+                environment = "deep_blue_water"
+            elif green_dominance > 0.4 and gr_ratio > 1.3:
+                environment = "green_coastal_water"
+            elif blue_dominance > 0.35 and green_dominance > 0.35:
+                environment = "mixed_water"
+            else:
+                environment = "shallow_clear_water"
+            
+            # 4. Contrast and saturation analysis
+            # Local contrast estimation
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            laplacian_var = cv2.Laplacian(gray, cv2.CV_64F).var()
+            contrast_factor = min(1.0, laplacian_var / 500.0)
+            
+            # Color saturation estimation
+            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+            saturation_mean = np.mean(hsv[:,:,1]) / 255.0
+            
+            optimized_params = {}
+            
+            # Enable color rebalancing
+            optimized_params['color_rebalance_enabled'] = True
+            
+            # 5. Adaptive color correction factors (Li et al. approach)
+            if environment == "deep_blue_water":
+                # Strong blue cast - aggressive red enhancement
+                red_factor = 2.0 + max(0, 0.5 - red_dominance) * 3.0
+                green_factor = 1.5 + max(0, 0.3 - green_dominance) * 2.0
+                blue_factor = max(0.7, 1.0 - blue_dominance * 0.8)
+                
+            elif environment == "green_coastal_water":
+                # Green cast - enhance red and blue
+                red_factor = 1.8 + max(0, 0.4 - red_dominance) * 2.5
+                green_factor = max(0.8, 1.0 - green_dominance * 0.6)
+                blue_factor = 1.3 + max(0, 0.3 - blue_dominance) * 1.5
+                
+            elif environment == "mixed_water":
+                # Balanced approach for mixed conditions
+                red_factor = 1.5 + max(0, 0.33 - red_dominance) * 2.0
+                green_factor = 1.2 + max(0, 0.33 - green_dominance) * 1.5
+                blue_factor = max(0.9, 1.0 - max(0, blue_dominance - 0.33) * 1.2)
+                
+            else:  # shallow_clear_water
+                # Minimal correction for clear conditions
+                red_factor = 1.2 + max(0, 0.3 - red_dominance) * 1.0
+                green_factor = 1.1 + max(0, 0.3 - green_dominance) * 0.8
+                blue_factor = max(0.95, 1.0 - max(0, blue_dominance - 0.35) * 0.5)
+            
+            # Apply contrast-based modulation
+            contrast_boost = 1.0 + (1.0 - contrast_factor) * 0.3
+            red_factor *= contrast_boost
+            green_factor *= contrast_boost
+            
+            # Clamp values to reasonable ranges
+            optimized_params['color_rebalance_red_factor'] = min(3.0, red_factor)
+            optimized_params['color_rebalance_green_factor'] = min(2.5, green_factor)
+            optimized_params['color_rebalance_blue_factor'] = max(0.5, min(1.5, blue_factor))
+            
+            # 6. Adaptive gamma correction (Emberton et al.)
+            # Base gamma on overall brightness and contrast
+            overall_brightness = (r_mean + g_mean + b_mean) / 3.0
+            
+            if overall_brightness < 0.3:  # Dark image
+                gamma_value = 0.7 + (0.3 - overall_brightness) * 0.5
+            elif overall_brightness > 0.7:  # Bright image
+                gamma_value = 1.2 + (overall_brightness - 0.7) * 0.3
+            else:  # Normal brightness
+                gamma_value = 1.0 + (0.5 - overall_brightness) * 0.4
+            
+            optimized_params['color_rebalance_gamma'] = max(0.5, min(1.8, gamma_value))
+            
+            # 7. Shadow and highlight preservation
+            # Analyze histogram to determine clipping prevention
+            hist_r = cv2.calcHist([img], [2], None, [256], [0, 256])
+            hist_g = cv2.calcHist([img], [1], None, [256], [0, 256])
+            hist_b = cv2.calcHist([img], [0], None, [256], [0, 256])
+            
+            # Check for potential clipping
+            total_pixels = h * w
+            highlight_pixels_r = np.sum(hist_r[240:]) / total_pixels
+            shadow_pixels_r = np.sum(hist_r[:15]) / total_pixels
+            
+            if highlight_pixels_r > 0.02:  # Risk of highlight clipping
+                optimized_params['color_rebalance_red_factor'] *= 0.9
+                optimized_params['color_rebalance_green_factor'] *= 0.9
+            
+            if shadow_pixels_r > 0.05:  # Too many shadows
+                optimized_params['color_rebalance_gamma'] = max(0.6, 
+                    optimized_params['color_rebalance_gamma'] - 0.1)
+            
+            # 8. Saturation enhancement based on analysis
+            if saturation_mean < 0.3:  # Low saturation
+                optimized_params['color_rebalance_saturation_factor'] = min(2.0, 1.2 + (0.3 - saturation_mean) * 2.0)
+            elif saturation_mean > 0.6:  # Already saturated
+                optimized_params['color_rebalance_saturation_factor'] = max(0.8, 1.0 - (saturation_mean - 0.6) * 0.5)
+            else:
+                optimized_params['color_rebalance_saturation_factor'] = 1.1 + (0.45 - saturation_mean) * 0.6
+            
+            return optimized_params
+            
+        except Exception as e:
+            print(f"Enhanced auto-tune Color Rebalancing error: {e}")
+            return {}
+
+    def _enhanced_auto_tune_histogram_equalization(self, img: np.ndarray) -> dict:
+        """
+        Enhanced auto-tune Histogram Equalization basé sur:
+        - Zuiderveld (1994): "Contrast Limited Adaptive Histogram Equalization"
+        - Stark (2000): "Adaptive Image Contrast Enhancement"
+        - Huang et al. (2013): "Efficient Contrast Enhancement"
+        """
+        try:
+            if img is None or img.size == 0:
+                return {}
+            
+            # Convert to grayscale for analysis
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            h, w = gray.shape
+            
+            # 1. Histogram analysis
+            hist = cv2.calcHist([gray], [0], None, [256], [0, 256])
+            hist_norm = hist.ravel() / (h * w)
+            
+            # 2. Dynamic range analysis
+            # Find effective min/max (ignore extreme outliers)
+            cumulative = np.cumsum(hist_norm)
+            effective_min = np.argmax(cumulative >= 0.01) 
+            effective_max = np.argmax(cumulative >= 0.99)
+            dynamic_range = effective_max - effective_min
+            
+            # 3. Contrast measurement
+            # Local standard deviation as contrast measure
+            mean_filter = cv2.blur(gray.astype(np.float32), (15, 15))
+            local_contrast = np.mean(np.abs(gray.astype(np.float32) - mean_filter))
+            
+            # 4. Histogram distribution analysis
+            # Check for peaks (bimodal, multimodal distributions)
+            smooth_hist = cv2.GaussianBlur(hist_norm.reshape(-1, 1), (5, 1), 1.0).ravel()
+            
+            # Count peaks
+            peaks = 0
+            for i in range(1, len(smooth_hist) - 1):
+                if (smooth_hist[i] > smooth_hist[i-1] and 
+                    smooth_hist[i] > smooth_hist[i+1] and 
+                    smooth_hist[i] > 0.001):
+                    peaks += 1
+            
+            optimized_params = {}
+            
+            # Enable histogram equalization
+            optimized_params['hist_eq_enabled'] = True
+            
+            # 5. Adaptive method selection
+            if local_contrast < 15.0:  # Very low contrast
+                if peaks <= 1:  # Uniform distribution
+                    optimized_params['hist_eq_method'] = 'global'
+                    optimized_params['hist_eq_clip_limit'] = 3.0
+                else:  # Multiple peaks but low contrast
+                    optimized_params['hist_eq_method'] = 'clahe'
+                    optimized_params['hist_eq_clip_limit'] = 2.0
+                    
+            elif local_contrast > 40.0:  # High contrast
+                optimized_params['hist_eq_method'] = 'clahe'
+                optimized_params['hist_eq_clip_limit'] = min(4.0, 1.5 + local_contrast / 30.0)
+                
+            else:  # Medium contrast
+                if dynamic_range < 100:  # Narrow dynamic range
+                    optimized_params['hist_eq_method'] = 'global'
+                    optimized_params['hist_eq_clip_limit'] = 2.5
+                else:  # Good dynamic range
+                    optimized_params['hist_eq_method'] = 'clahe'
+                    optimized_params['hist_eq_clip_limit'] = 2.0 + dynamic_range / 150.0
+            
+            # 6. Grid size optimization for CLAHE
+            # Larger grids for smoother results, smaller for more local adaptation
+            if optimized_params.get('hist_eq_method') == 'clahe':
+                if h * w < 200000:  # Small image
+                    grid_size = max(4, min(8, int(np.sqrt(h * w) / 50)))
+                elif h * w > 1000000:  # Large image
+                    grid_size = max(8, min(16, int(np.sqrt(h * w) / 80)))
+                else:  # Medium image
+                    grid_size = max(6, min(12, int(np.sqrt(h * w) / 60)))
+                
+                optimized_params['hist_eq_grid_size'] = grid_size
+            
+            # 7. Clip limit refinement based on image characteristics
+            if 'hist_eq_clip_limit' in optimized_params:
+                # Reduce clip limit for images with many details
+                if local_contrast > 30.0:
+                    optimized_params['hist_eq_clip_limit'] *= 0.8
+                
+                # Increase for flat images
+                if local_contrast < 10.0:
+                    optimized_params['hist_eq_clip_limit'] *= 1.3
+                
+                # Clamp to reasonable range
+                optimized_params['hist_eq_clip_limit'] = max(1.0, min(5.0, 
+                    optimized_params['hist_eq_clip_limit']))
+            
+            return optimized_params
+            
+        except Exception as e:
+            print(f"Enhanced auto-tune Histogram Equalization error: {e}")
+            return {}
+
+    def _enhanced_auto_tune_multiscale_fusion(self, img: np.ndarray) -> dict:
+        """
+        Enhanced auto-tune Multiscale Fusion basé sur:
+        - Mertens et al. (2009): "Exposure Fusion"
+        - Ancuti et al. (2012): "Enhancing Underwater Images"
+        - Burt & Adelson (1983): "Laplacian Pyramid"
+        """
+        try:
+            if img is None or img.size == 0:
+                return {}
+            
+            img_float = img.astype(np.float32) / 255.0
+            h, w = img.shape[:2]
+            
+            # 1. Image quality analysis for fusion weights
+            gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            
+            # 2. Contrast analysis using Laplacian
+            laplacian = cv2.Laplacian(gray, cv2.CV_64F)
+            contrast_measure = np.var(laplacian)
+            
+            # 3. Saturation analysis
+            hsv = cv2.cvtColor(img, cv2.COLOR_BGR2HSV)
+            saturation = hsv[:,:,1].astype(np.float32) / 255.0
+            avg_saturation = np.mean(saturation)
+            
+            # 4. Well-exposedness analysis (Mertens method)
+            # Gaussian curve centered at 0.5 for optimal exposure
+            r_channel = img_float[:,:,2]
+            g_channel = img_float[:,:,1]
+            b_channel = img_float[:,:,0]
+            
+            exposedness_r = np.exp(-0.5 * ((r_channel - 0.5) / 0.25)**2)
+            exposedness_g = np.exp(-0.5 * ((g_channel - 0.5) / 0.25)**2)
+            exposedness_b = np.exp(-0.5 * ((b_channel - 0.5) / 0.25)**2)
+            
+            avg_exposedness = np.mean((exposedness_r + exposedness_g + exposedness_b) / 3.0)
+            
+            # 5. Local contrast analysis for detail preservation
+            # Use different kernel sizes to analyze contrast at multiple scales
+            kernel_3x3 = np.ones((3,3), np.float32) / 9
+            kernel_7x7 = np.ones((7,7), np.float32) / 49
+            kernel_15x15 = np.ones((15,15), np.float32) / 225
+            
+            blur_3 = cv2.filter2D(gray.astype(np.float32), -1, kernel_3x3)
+            blur_7 = cv2.filter2D(gray.astype(np.float32), -1, kernel_7x7)
+            blur_15 = cv2.filter2D(gray.astype(np.float32), -1, kernel_15x15)
+            
+            detail_3 = np.mean(np.abs(gray.astype(np.float32) - blur_3))
+            detail_7 = np.mean(np.abs(gray.astype(np.float32) - blur_7))
+            detail_15 = np.mean(np.abs(gray.astype(np.float32) - blur_15))
+            
+            optimized_params = {}
+            
+            # Enable multiscale fusion
+            optimized_params['multiscale_fusion_enabled'] = True
+            
+            # 6. Adaptive weight calculation (Ancuti approach for underwater)
+            
+            # Contrast weight - higher for low contrast images
+            if contrast_measure < 50:  # Low contrast
+                contrast_weight = 1.5 + (50 - contrast_measure) / 100.0
+            elif contrast_measure > 200:  # High contrast - reduce to avoid artifacts
+                contrast_weight = max(0.8, 1.0 - (contrast_measure - 200) / 400.0)
+            else:
+                contrast_weight = 1.0 + (50 - contrast_measure) / 200.0
+            
+            optimized_params['multiscale_contrast_weight'] = max(0.5, min(2.5, contrast_weight))
+            
+            # Saturation weight - enhance if undersaturated
+            if avg_saturation < 0.3:  # Undersaturated
+                saturation_weight = 1.8 + (0.3 - avg_saturation) * 2.0
+            elif avg_saturation > 0.7:  # Oversaturated
+                saturation_weight = max(0.5, 1.0 - (avg_saturation - 0.7) * 1.5)
+            else:
+                saturation_weight = 1.0 + (0.5 - avg_saturation) * 0.8
+            
+            optimized_params['multiscale_saturation_weight'] = max(0.3, min(2.5, saturation_weight))
+            
+            # Exposedness weight - based on how well-exposed the image is
+            if avg_exposedness < 0.5:  # Poor exposure
+                exposedness_weight = 1.5 + (0.5 - avg_exposedness) * 1.0
+            else:  # Good exposure - maintain
+                exposedness_weight = 1.0 + (avg_exposedness - 0.5) * 0.5
+            
+            optimized_params['multiscale_exposedness_weight'] = max(0.5, min(2.0, exposedness_weight))
+            
+            # 7. Scale levels based on image size and detail
+            # More levels for larger images with more detail
+            if h * w > 1000000:  # Large image
+                if detail_7 > 20:  # High detail
+                    scale_levels = 6
+                else:
+                    scale_levels = 5
+            elif h * w < 200000:  # Small image
+                if detail_3 > 15:  # High detail despite small size
+                    scale_levels = 4
+                else:
+                    scale_levels = 3
+            else:  # Medium image
+                if detail_7 > 15:
+                    scale_levels = 5
+                else:
+                    scale_levels = 4
+            
+            optimized_params['multiscale_levels'] = scale_levels
+            
+            # 8. Sigma adjustment for Gaussian pyramid
+            # Smaller sigma for detailed images, larger for smooth images
+            if detail_15 > 10:  # High detail across large scales
+                sigma = max(0.8, 1.0 - detail_15 / 50.0)
+            else:  # Lower detail
+                sigma = min(1.5, 1.0 + (10 - detail_15) / 20.0)
+            
+            optimized_params['multiscale_sigma'] = sigma
+            
+            return optimized_params
+            
+        except Exception as e:
+            print(f"Enhanced auto-tune Multiscale Fusion error: {e}")
             return {}
 
     def toggle_enhanced_autotune(self, enabled: bool = True):
@@ -2407,25 +2846,151 @@ class ImageProcessor:
         self.use_enhanced_autotune = enabled
         print(f"Enhanced auto-tune: {'ENABLED' if enabled else 'DISABLED'}")
 
+    def initialize_autotune_mapping(self):
+        """Initialise le système de mapping auto-tune (Étape 3)"""
+        try:
+            from .autotune_mapping import create_auto_tune_mapping_system
+            self.autotune_mapper = create_auto_tune_mapping_system(self)
+            print("✅ Auto-tune mapping system initialized")
+            return True
+        except ImportError as e:
+            print(f"❌ Failed to initialize auto-tune mapping: {e}")
+            self.autotune_mapper = None
+            return False
+
+    def initialize_quality_metrics(self):
+        """Initialise le système de métriques de qualité (Étape 4)"""
+        try:
+            from .quality_metrics import create_quality_metrics_system
+            self.quality_analyzer, self.quality_optimizer = create_quality_metrics_system(self)
+            print("✅ Quality metrics system initialized")
+            return True
+        except ImportError as e:
+            print(f"❌ Failed to initialize quality metrics: {e}")
+            self.quality_analyzer = None
+            self.quality_optimizer = None
+            return False
+
+    def get_autotune_mapper(self):
+        """Retourne le mapper auto-tune, l'initialise si nécessaire"""
+        if not hasattr(self, 'autotune_mapper') or self.autotune_mapper is None:
+            self.initialize_autotune_mapping()
+        return getattr(self, 'autotune_mapper', None)
+
+    def get_quality_optimizer(self):
+        """Retourne l'optimiseur qualité, l'initialise si nécessaire"""
+        if not hasattr(self, 'quality_optimizer') or self.quality_optimizer is None:
+            self.initialize_quality_metrics()
+        return getattr(self, 'quality_optimizer', None)
+
+    def analyze_image_quality(self, img: np.ndarray) -> dict:
+        """
+        Analyse la qualité d'image avec métriques complètes (Étape 4)
+        
+        Args:
+            img: Image numpy array
+            
+        Returns:
+            Dict avec métriques de qualité
+        """
+        if not hasattr(self, 'quality_analyzer') or self.quality_analyzer is None:
+            self.initialize_quality_metrics()
+        
+        if self.quality_analyzer is None:
+            return {'overall_quality': 0.0, 'error': 'Quality analyzer not available'}
+        
+        metrics = self.quality_analyzer.analyze_image_quality(img)
+        
+        # Convertir en dict pour compatibilité
+        return {
+            'contrast': metrics.contrast,
+            'sharpness': metrics.sharpness,
+            'saturation': metrics.saturation,
+            'brightness': metrics.brightness,
+            'noise_level': metrics.noise_level,
+            'color_cast': metrics.color_cast,
+            'underwater_visibility': metrics.underwater_visibility,
+            'detail_preservation': metrics.detail_preservation,
+            'overall_quality': metrics.overall_quality
+        }
+
+    def auto_tune_with_quality_optimization(self, img: np.ndarray, algorithms: list = None) -> dict:
+        """
+        Auto-tune avancé avec optimisation basée sur métriques de qualité (Étape 4)
+        
+        Args:
+            img: Image numpy array
+            algorithms: Liste des algorithmes à optimiser
+            
+        Returns:
+            Dict avec résultats d'optimisation pour chaque algorithme
+        """
+        optimizer = self.get_quality_optimizer()
+        if optimizer is None:
+            print("❌ Quality optimizer not available, using standard auto-tune")
+            return self.auto_tune_functions(img, algorithms)
+        
+        # Utiliser l'optimisation basée sur métriques de qualité
+        optimization_results = optimizer.optimize_full_pipeline(img, algorithms)
+        
+        # Convertir les résultats en format standard
+        final_results = {}
+        for algorithm, opt_result in optimization_results.items():
+            final_results[algorithm] = opt_result.optimized_params
+        
+        return final_results
+
+    def auto_tune_functions(self, img: np.ndarray, algorithms: list = None) -> dict:
+        """
+        Système unifié d'auto-tune avec mapping intégré (Étape 3)
+        
+        Args:
+            img: Image numpy array
+            algorithms: Liste des algorithmes à exécuter (None = tous)
+            
+        Returns:
+            Dict avec paramètres optimisés pour chaque algorithme
+        """
+        mapper = self.get_autotune_mapper()
+        if mapper is None:
+            print("❌ Auto-tune mapping system not available, using fallback")
+            return self._fallback_auto_tune(img, algorithms)
+        
+        # Utiliser le système de mapping intégré
+        return mapper.execute_pipeline_auto_tune(img, algorithms)
+
+    def _fallback_auto_tune(self, img: np.ndarray, algorithms: list = None) -> dict:
+        """Fallback auto-tune sans système de mapping"""
+        if algorithms is None:
+            algorithms = ['white_balance', 'udcp', 'beer_lambert', 'color_rebalance', 
+                         'histogram_equalization', 'multiscale_fusion']
+        
+        results = {}
+        for algorithm in algorithms:
+            result = self.enhanced_auto_tune_step(img, algorithm)
+            if result:
+                results[algorithm] = result
+        
+        return results
+
     def enhanced_auto_tune_step(self, img: np.ndarray, step_name: str) -> dict:
         """
         Auto-tune unifié avec choix classique/amélioré
         """
         if hasattr(self, 'use_enhanced_autotune') and self.use_enhanced_autotune:
-            # Utiliser les méthodes améliorées
+            # Utiliser les méthodes améliorées basées sur la recherche académique
             if step_name == 'white_balance':
                 return self._enhanced_auto_tune_white_balance(img)
             elif step_name == 'udcp':
                 return self._enhanced_auto_tune_udcp(img) 
             elif step_name == 'beer_lambert':
                 return self._enhanced_auto_tune_beer_lambert(img)
-            # Fallback vers méthodes classiques pour les autres étapes
             elif step_name == 'color_rebalance':
-                return self._auto_tune_color_rebalance(img)
+                return self._enhanced_auto_tune_color_rebalancing(img)
             elif step_name == 'histogram_equalization':
-                return self._auto_tune_histogram_equalization(img)
+                return self._enhanced_auto_tune_histogram_equalization(img)
             elif step_name == 'multiscale_fusion':
-                return self._auto_tune_multiscale_fusion(img)
+                return self._enhanced_auto_tune_multiscale_fusion(img)
         
         # Utiliser méthodes classiques par défaut
         if step_name == 'white_balance':
