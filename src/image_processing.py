@@ -207,6 +207,7 @@ class ImageProcessor:
             
             # Histogram equalization parameters
             'hist_eq_enabled': True,
+            'hist_eq_method': 'clahe',             # 'clahe' or 'global'
             'hist_eq_clip_limit': 2.0,             # Corrected: Should be 2.0, not 3.0
             'hist_eq_tile_grid_size': 8,
             
@@ -1502,7 +1503,7 @@ class ImageProcessor:
                 'max': 100,
                 'step': 10
             },
-            'udcp_guided_eps': {
+            'udcp_guided_epsilon': {
                 'type': 'float',
                 'label': t('param_udcp_guided_eps_label'),
                 'description': t('param_udcp_guided_eps_desc'),
@@ -1510,7 +1511,7 @@ class ImageProcessor:
                 'max': 0.01,
                 'step': 0.0001
             },
-            'udcp_enhance_contrast': {
+            'udcp_enhance_factor': {
                 'type': 'float',
                 'label': t('param_udcp_enhance_contrast_label'),
                 'description': t('param_udcp_enhance_contrast_desc'),
@@ -1691,6 +1692,11 @@ class ImageProcessor:
             },
             
             # Multi-scale fusion parameters
+            'multiscale_fusion_enabled': {
+                'type': 'boolean',
+                'label': t('param_multiscale_fusion_enabled_label'),
+                'description': t('param_multiscale_fusion_enabled_desc')
+            },
             'fusion_laplacian_levels': {
                 'type': 'int',
                 'label': t('param_fusion_laplacian_levels_label'),
