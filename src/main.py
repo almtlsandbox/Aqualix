@@ -442,7 +442,7 @@ class ImageVideoProcessorApp:
             messagebox.showerror("Error", f"Could not process image: {str(e)}")
             self.logger.error(f"Preview update error: {str(e)}")
             
-    def get_full_resolution_processed_image(self):
+    def get_full_resolution_processed_image(self, progress_callback=None):
         """Get the full resolution processed image (process if needed)"""
         if self.original_image is None:
             return None
@@ -457,8 +457,11 @@ class ImageVideoProcessorApp:
             original_size = self.original_image.shape[:2]
             self.logger.info(f"Full resolution: {original_size[1]}x{original_size[0]} pixels")
             
-            # Process the full resolution image
-            self.processed_image = self.processor.process_image(self.original_image.copy())
+            # Process the full resolution image with progress callback
+            self.processed_image = self.processor.process_image(
+                self.original_image.copy(), 
+                progress_callback=progress_callback
+            )
             
             self.logger.info("Full resolution processing completed")
             return self.processed_image
@@ -486,26 +489,55 @@ class ImageVideoProcessorApp:
         )
             
     def save_result(self):
-        """Save the processed result"""
+        """Save the processed result with detailed progress tracking"""
+        from .progress_bar import show_progress
+        
         try:
-            # Get full resolution processed image
-            full_res_image = self.get_full_resolution_processed_image()
-            
-            if full_res_image is None:
-                messagebox.showwarning("Warning", "No processed image to save")
-                return
+            with show_progress(self.root, "Sauvegarder le résultat", "Initialisation...") as progress:
+                # Step 1: Initialize (5%)
+                progress.update_message_and_progress("Initialisation...", 5)
                 
-            # Check if it's a video
-            if self.video_capture:
-                self.save_video()
-            else:
-                self.save_image()
+                # Create progress callback for detailed processing steps
+                def processing_progress_callback(message, percentage):
+                    progress.update_message_and_progress(message, percentage)
+                
+                # Step 2: Full resolution processing with granular progress (10% → 85%)
+                progress.update_message_and_progress("Traitement à la résolution complète...", 10)
+                full_res_image = self.get_full_resolution_processed_image(
+                    progress_callback=processing_progress_callback
+                )
+                progress.update_message_and_progress("Traitement terminé", 85)
+                
+                if full_res_image is None:
+                    messagebox.showwarning("Warning", "No processed image to save")
+                    return
+                
+                # Step 3: Preparation (90%)
+                progress.update_message_and_progress("Préparation de la sauvegarde...", 90)
+                
+                # Step 4: Save operation (95%)
+                if self.video_capture:
+                    progress.update_message_and_progress("Sauvegarde vidéo...", 95)
+                    self.save_video()
+                else:
+                    progress.update_message_and_progress("Sauvegarde image...", 95)
+                    self.save_image()
+                    
+                # Step 5: Finalization (100%)
+                progress.update_message_and_progress("Finalisation...", 100)
+                
+                # Small delay to ensure user sees completion
+                import time
+                time.sleep(0.3)
+                
+            # Progress bar is automatically closed here by the context manager
+                
         except Exception as e:
             messagebox.showerror("Error", f"Erreur lors de la sauvegarde: {str(e)}")
             
     def save_image(self):
         """Save processed image with advanced options"""
-        from save_dialog import show_save_dialog
+        from .save_dialog import show_save_dialog
         
         # Determine initial filename and format
         initial_filename = ""
@@ -524,55 +556,52 @@ class ImageVideoProcessorApp:
         file_path = save_options['filename']
         
         try:
-            # Get full resolution image if needed
-            if self.processed_image is None and self.preview_scale_factor < 1.0:
-                full_res_image = self.get_full_resolution_processed_image()
-            else:
-                full_res_image = self.get_full_resolution_processed_image()
-                    
-                if full_res_image is None:
-                    raise ValueError("No processed image to save")
-                    
-                # Convert RGB to BGR for saving
-                image_bgr = cv2.cvtColor(full_res_image, cv2.COLOR_RGB2BGR)
-                
-                # Determine save parameters based on format and options
-                save_params = []
-                file_format = save_options['format']
-            
-                
-                if file_format == 'jpg':
-                    quality = save_options.get('quality', 95)
-                    save_params = [cv2.IMWRITE_JPEG_QUALITY, quality]
-                    
-                    if save_options.get('progressive', False):
-                        save_params.extend([cv2.IMWRITE_JPEG_PROGRESSIVE, 1])
+            # Get full resolution image (should already be processed from save_result())
+            full_res_image = self.get_full_resolution_processed_image()
                         
-                elif file_format == 'png':
-                    compression = save_options.get('compression', 6)
-                    save_params = [cv2.IMWRITE_PNG_COMPRESSION, compression]
-                    
-                elif file_format == 'tiff':
-                    compression_type = save_options.get('compression', 'lzw')
-                    if compression_type == 'none':
-                        save_params = [cv2.IMWRITE_TIFF_COMPRESSION, 1]
-                    elif compression_type == 'lzw':
-                        save_params = [cv2.IMWRITE_TIFF_COMPRESSION, 5]
-                    elif compression_type == 'zip':
-                        save_params = [cv2.IMWRITE_TIFF_COMPRESSION, 8]
+            if full_res_image is None:
+                raise ValueError("No processed image to save")
                 
-                # Save with advanced options
-                success = cv2.imwrite(file_path, image_bgr, save_params)
+            # Convert RGB to BGR for saving
+            image_bgr = cv2.cvtColor(full_res_image, cv2.COLOR_RGB2BGR)
+            
+            # Determine save parameters based on format and options
+            save_params = []
+            file_format = save_options['format']
+        
+            
+            if file_format == 'jpg':
+                quality = save_options.get('quality', 95)
+                save_params = [cv2.IMWRITE_JPEG_QUALITY, quality]
                 
-                if success:
-                    # Handle metadata preservation if requested
-                    if save_options.get('preserve_metadata', False) and hasattr(self, 'current_file') and self.current_file:
-                        self._preserve_metadata(self.current_file, file_path)
+                if save_options.get('progressive', False):
+                    save_params.extend([cv2.IMWRITE_JPEG_PROGRESSIVE, 1])
                     
-                    messagebox.showinfo("Success", f"Image saved successfully!\nFile: {file_path}")
-                    self.logger.info(f"Image saved: {file_path} with format: {file_format}, options: {save_options}")
-                else:
-                    raise ValueError("Failed to write image file")
+            elif file_format == 'png':
+                compression = save_options.get('compression', 6)
+                save_params = [cv2.IMWRITE_PNG_COMPRESSION, compression]
+                
+            elif file_format == 'tiff':
+                compression_type = save_options.get('compression', 'lzw')
+                if compression_type == 'none':
+                    save_params = [cv2.IMWRITE_TIFF_COMPRESSION, 1]
+                elif compression_type == 'lzw':
+                    save_params = [cv2.IMWRITE_TIFF_COMPRESSION, 5]
+                elif compression_type == 'zip':
+                    save_params = [cv2.IMWRITE_TIFF_COMPRESSION, 8]
+            
+            # Save with advanced options
+            success = cv2.imwrite(file_path, image_bgr, save_params)
+            
+            if success:
+                # Handle metadata preservation if requested
+                if save_options.get('preserve_metadata', False) and hasattr(self, 'current_file') and self.current_file:
+                    self._preserve_metadata(self.current_file, file_path)
+                
+                messagebox.showinfo("Success", f"Image saved successfully!\nFile: {file_path}")
+                self.logger.info(f"Image saved: {file_path} with format: {file_format}, options: {save_options}")
+            else:
+                raise ValueError("Failed to write image file")
                     
         except Exception as e:
             messagebox.showerror("Error", f"Could not save image: {str(e)}")
@@ -604,8 +633,8 @@ class ImageVideoProcessorApp:
             self.logger.warning(f"Could not preserve metadata: {str(e)}")
             # Continue without metadata preservation - not a critical error
                 
-    def save_video(self):
-        """Save processed video"""
+    def save_video(self, progress_callback=None):
+        """Save processed video with detailed progress tracking"""
         file_path = filedialog.asksaveasfilename(
             title="Save Processed Video",
             defaultextension=".mp4",
@@ -618,25 +647,16 @@ class ImageVideoProcessorApp:
         )
         
         if file_path:
-            # Show progress dialog
-            progress_window = tk.Toplevel(self.root)
-            progress_window.title("Processing Video")
-            progress_window.geometry("400x100")
-            progress_window.transient(self.root)
-            progress_window.grab_set()
+            # Use existing progress system instead of separate progress window
+            from .progress_bar import show_progress
             
-            progress_label = ttk.Label(progress_window, text="Processing video frames...")
-            progress_label.pack(pady=10)
-            
-            progress_bar = ttk.Progressbar(progress_window, mode='determinate', maximum=self.total_frames)
-            progress_bar.pack(fill=tk.X, padx=20, pady=10)
-            
-            # Process video in a separate thread
-            def process_video():
+            with show_progress(self.root, "Traitement Vidéo", "Initialisation...") as progress:
                 try:
                     if self.video_capture is None:
                         raise ValueError("No video loaded")
-                        
+                    
+                    progress.update_message_and_progress("Configuration de la vidéo...", 5)
+                    
                     # Get video properties
                     fps = int(self.video_capture.get(cv2.CAP_PROP_FPS))
                     width = int(self.video_capture.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -646,50 +666,61 @@ class ImageVideoProcessorApp:
                     fourcc = cv2.VideoWriter.fourcc(*'mp4v')
                     out = cv2.VideoWriter(file_path, fourcc, fps, (width, height))
                     
-                    # Process each frame
+                    progress.update_message_and_progress("Traitement des frames...", 10)
+                    
+                    # Process each frame with detailed progress
                     self.video_capture.set(cv2.CAP_PROP_POS_FRAMES, 0)
                     
                     for frame_num in range(self.total_frames):
                         ret, frame = self.video_capture.read()
                         if not ret:
                             break
+                        
+                        # Calculate progress (10% to 90% for frame processing)
+                        frame_progress = 10 + (frame_num * 80 // self.total_frames)
+                        
+                        # Create frame-specific progress callback for processing steps
+                        def frame_processing_callback(step_message, step_percentage):
+                            # Distribute the step percentage within the frame's allocated percentage range
+                            frame_start = 10 + (frame_num * 80 // self.total_frames)
+                            frame_end = 10 + ((frame_num + 1) * 80 // self.total_frames)
+                            frame_range = frame_end - frame_start
+                            adjusted_percentage = frame_start + (step_percentage * frame_range // 100)
                             
+                            message = f"Frame {frame_num + 1}/{self.total_frames}: {step_message}"
+                            progress.update_message_and_progress(message, adjusted_percentage)
+                        
                         # Convert BGR to RGB
                         frame_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                         
-                        # Process frame
-                        processed_frame = self.processor.process_image(frame_rgb)
+                        # Process frame with progress callback
+                        processed_frame = self.processor.process_image(
+                            frame_rgb, 
+                            progress_callback=frame_processing_callback
+                        )
                         
                         # Convert back to BGR and write
                         processed_bgr = cv2.cvtColor(processed_frame, cv2.COLOR_RGB2BGR)
                         out.write(processed_bgr)
                         
-                        # Update progress
-                        try:
-                            if progress_window.winfo_exists():
-                                self.root.after(0, lambda f=frame_num: progress_bar.configure(value=f + 1) if progress_window.winfo_exists() else None)
-                        except tk.TclError:
-                            # Window was destroyed, ignore
-                            pass
-                        
+                        # Update progress for this frame completion
+                        progress.update_message_and_progress(
+                            f"Frame {frame_num + 1}/{self.total_frames} terminée", 
+                            frame_progress
+                        )
+                    
+                    progress.update_message_and_progress("Finalisation de la vidéo...", 95)
                     out.release()
                     
-                    # Close progress window and show success message
-                    self.root.after(0, lambda: [
-                        progress_window.destroy(),
-                        messagebox.showinfo("Success", "Video saved successfully!")
-                    ])
+                    progress.update_message_and_progress("Vidéo sauvegardée avec succès!", 100)
+                    import time
+                    time.sleep(0.5)  # Show completion message
+                    
+                    messagebox.showinfo("Succès", "Vidéo sauvegardée avec succès!")
                     
                 except Exception as e:
-                    self.root.after(0, lambda: [
-                        progress_window.destroy(),
-                        messagebox.showerror("Error", f"Could not save video: {str(e)}")
-                    ])
-                    
-            # Start processing thread
-            thread = threading.Thread(target=process_video)
-            thread.daemon = True
-            thread.start()
+                    messagebox.showerror("Erreur", f"Impossible de sauvegarder la vidéo: {str(e)}")
+                    self.logger.error(f"Video save error: {str(e)}")
             
     def __del__(self):
         """Cleanup resources"""

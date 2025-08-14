@@ -265,9 +265,23 @@ class ImageProcessor:
         
         return {}
         
-    def process_image(self, image: np.ndarray) -> np.ndarray:
-        """Process an image through the complete pipeline"""
+    def process_image(self, image: np.ndarray, progress_callback=None) -> np.ndarray:
+        """Process an image through the complete pipeline with optional progress callback"""
         result = image.copy()
+        
+        # Get list of enabled steps for progress calculation
+        enabled_steps = []
+        for operation in self.pipeline_order:
+            if ((operation == 'white_balance' and self.parameters['white_balance_enabled']) or
+                (operation == 'udcp' and self.parameters['udcp_enabled']) or  
+                (operation == 'beer_lambert' and self.parameters['beer_lambert_enabled']) or
+                (operation == 'color_rebalance' and self.parameters['color_rebalance_enabled']) or
+                (operation == 'histogram_equalization' and self.parameters['hist_eq_enabled']) or
+                (operation == 'multiscale_fusion' and self.parameters['multiscale_fusion_enabled'])):
+                enabled_steps.append(operation)
+        
+        total_steps = len(enabled_steps)
+        completed_steps = 0
         
         for operation in self.pipeline_order:
             # Check if auto-tune is enabled for this step and perform it
@@ -278,19 +292,37 @@ class ImageProcessor:
                     for param_name, value in optimized_params.items():
                         self.set_parameter(param_name, value)
             
-            # Execute the processing step
+            # Execute the processing step with progress updates
             if operation == 'white_balance' and self.parameters['white_balance_enabled']:
+                if progress_callback:
+                    progress_callback(f"Balance des blancs...", 10 + (completed_steps * 75 // total_steps))
                 result = self.apply_white_balance(result)
+                completed_steps += 1
             elif operation == 'udcp' and self.parameters['udcp_enabled']:
+                if progress_callback:
+                    progress_callback(f"Correction de canal sombre sous-marin...", 10 + (completed_steps * 75 // total_steps))
                 result = self.underwater_dark_channel_prior(result)
+                completed_steps += 1
             elif operation == 'beer_lambert' and self.parameters['beer_lambert_enabled']:
+                if progress_callback:
+                    progress_callback(f"Correction Beer-Lambert...", 10 + (completed_steps * 75 // total_steps))
                 result = self.beer_lambert_correction(result)
+                completed_steps += 1
             elif operation == 'color_rebalance' and self.parameters['color_rebalance_enabled']:
+                if progress_callback:
+                    progress_callback(f"Rééquilibrage des couleurs...", 10 + (completed_steps * 75 // total_steps))
                 result = self.color_rebalance(result)
+                completed_steps += 1
             elif operation == 'histogram_equalization' and self.parameters['hist_eq_enabled']:
+                if progress_callback:
+                    progress_callback(f"Égalisation d'histogramme adaptatif...", 10 + (completed_steps * 75 // total_steps))
                 result = self.adaptive_histogram_equalization(result)
+                completed_steps += 1
             elif operation == 'multiscale_fusion' and self.parameters['multiscale_fusion_enabled']:
+                if progress_callback:
+                    progress_callback(f"Fusion multi-échelle...", 10 + (completed_steps * 75 // total_steps))
                 result = self.multiscale_fusion(image, result)
+                completed_steps += 1
                 
         return result
     

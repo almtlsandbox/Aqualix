@@ -53,17 +53,18 @@ class ProgressDialog:
         self.message_label = ttk.Label(main_frame, text=self.message, font=("Arial", 10))
         self.message_label.pack(pady=(0, 15))
         
-        # Progress bar
+        # Progress bar - using determinate mode for real progress
         self.progress_bar = ttk.Progressbar(
             main_frame, 
-            mode='indeterminate', 
+            mode='determinate', 
             length=280,
-            style="Custom.Horizontal.TProgressbar"
+            style="Custom.Horizontal.TProgressbar",
+            maximum=100
         )
         self.progress_bar.pack(pady=(0, 10))
         
-        # Start animation
-        self.progress_bar.start(10)  # Update every 10ms for smooth animation
+        # Initialize at 0%
+        self.progress_bar['value'] = 0
         
         # Cancel button (optional)
         button_frame = ttk.Frame(main_frame)
@@ -79,15 +80,39 @@ class ProgressDialog:
                 self.message_label.config(text=new_message)
                 self.dialog.update()
                 
+    def update_progress(self, percentage: float):
+        """Update the progress bar percentage (0-100)"""
+        with self.lock:
+            if self.progress_bar and self.dialog:
+                # Clamp percentage between 0 and 100
+                percentage = max(0, min(100, percentage))
+                self.progress_bar['value'] = percentage
+                self.dialog.update()
+                
+    def update_message_and_progress(self, message: str, percentage: float):
+        """Update both message and progress at once"""
+        with self.lock:
+            if self.dialog:
+                if self.message_label:
+                    self.message_label.config(text=message)
+                if self.progress_bar:
+                    percentage = max(0, min(100, percentage))
+                    self.progress_bar['value'] = percentage
+                self.dialog.update()
+                
     def hide(self):
-        """Hide the progress dialog"""
+        """Hide the progress dialog immediately"""
         with self.lock:
             if self.dialog:
                 try:
                     if self.progress_bar:
-                        self.progress_bar.stop()
+                        # No need to stop() for determinate mode
+                        pass
                     self.dialog.grab_release()
+                    # Force immediate destruction and update
                     self.dialog.destroy()
+                    self.parent.update_idletasks()  # Force UI update
+                    self.parent.update()  # Process all pending events
                 except:
                     pass  # Dialog might have been destroyed already
                 finally:
