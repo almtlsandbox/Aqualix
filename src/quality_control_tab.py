@@ -10,6 +10,7 @@ import threading
 from pathlib import Path
 import importlib.util
 import numpy as np
+from .ui_colors import ColoredButton
 
 
 class QualityControlTab:
@@ -57,11 +58,11 @@ class QualityControlTab:
         header_frame.pack(fill=tk.X, pady=(0, 10))
         
         # Analysis button
-        self.analyze_button = ttk.Button(
+        self.analyze_button = ColoredButton(
             header_frame, 
             text=self.loc.t('qc_run_analysis'),
             command=self.run_analysis,
-            style="Accent.TButton"
+            style_type='primary'  # Style primary pour meilleur contraste
         )
         self.analyze_button.pack(side=tk.LEFT, padx=(0, 10))
         
