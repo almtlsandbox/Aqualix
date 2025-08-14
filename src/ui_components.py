@@ -10,6 +10,7 @@ from PIL import Image, ImageTk
 from typing import Dict, Any, List, Callable, Union, Optional
 from .image_info import ImageInfoExtractor
 from .localization import t
+from .ui_colors import AqualixColors, ColoredFrame, SectionFrame, ColoredButton
 try:
     from config.about_config import AUTHOR_INFO, APP_INFO
 except ImportError:
@@ -51,50 +52,68 @@ class ParameterPanel(ttk.Frame):
         
     def setup_ui(self):
         """Setup the parameter panel UI"""
-        # Title
-        title_label = ttk.Label(self, text=t('parameters_title'), font=('Arial', 12, 'bold'))
-        title_label.pack(pady=(0, 5))
+        # Title with enhanced styling
+        title_label = ttk.Label(self, 
+                              text=t('parameters_title'), 
+                              font=('Arial', 14, 'bold'))
+        title_label.pack(pady=(8, 8))
         
-        # Collapse/Expand control
-        controls_frame = ttk.Frame(self)
-        controls_frame.pack(fill=tk.X, pady=(0, 10))
+        # Collapse/Expand control with styled background
+        controls_frame = ColoredFrame(self, bg_color=AqualixColors.SHALLOW_WATER, relief='solid', bd=1)
+        controls_frame.pack(fill=tk.X, pady=(0, 12), padx=8)
         
         self.expand_all_var = tk.BooleanVar(value=False)  # Start with all collapsed
-        expand_all_checkbox = ttk.Checkbutton(
+        expand_all_checkbox = tk.Checkbutton(
             controls_frame, 
             text=t('expand_all_sections'),
             variable=self.expand_all_var,
-            command=self.toggle_all_sections
+            command=self.toggle_all_sections,
+            bg=AqualixColors.SHALLOW_WATER,
+            fg=AqualixColors.DEEP_NAVY,
+            font=('Arial', 9, 'normal'),
+            selectcolor=AqualixColors.PEARL_WHITE,
+            activebackground=AqualixColors.SHALLOW_WATER
         )
-        expand_all_checkbox.pack(side=tk.LEFT)
+        expand_all_checkbox.pack(side=tk.LEFT, padx=(8, 0), pady=6)
         
-        # Global Auto-Tune control
+        # Global Auto-Tune control with accent styling
         self.global_auto_tune_var = tk.BooleanVar(value=True)
-        global_auto_tune_checkbox = ttk.Checkbutton(
+        global_auto_tune_checkbox = tk.Checkbutton(
             controls_frame,
             text=t('auto_tune_all'),
             variable=self.global_auto_tune_var,
-            command=self.toggle_all_auto_tune
+            command=self.toggle_all_auto_tune,
+            bg=AqualixColors.SHALLOW_WATER,
+            fg=AqualixColors.DEEP_NAVY,
+            font=('Arial', 9, 'bold'),
+            selectcolor=AqualixColors.SUNSET_GOLD,
+            activebackground=AqualixColors.SHALLOW_WATER
         )
-        global_auto_tune_checkbox.pack(side=tk.LEFT, padx=(10, 0))
+        global_auto_tune_checkbox.pack(side=tk.LEFT, padx=(16, 0), pady=6)
         
-        # Global reset button
-        global_reset_button = ttk.Button(
+        # Global reset button with accent styling
+        global_reset_button = ColoredButton(
             controls_frame,
             text=t('reset_all_parameters'),
-            command=self.reset_all_parameters
+            command=self.reset_all_parameters,
+            style_type='accent'
         )
-        global_reset_button.pack(side=tk.RIGHT, padx=(5, 0))
+        global_reset_button.configure(font=('Arial', 9, 'normal'))
+        global_reset_button.pack(side=tk.RIGHT, padx=(8, 8), pady=4)
         
         # Store checkbox and button for refresh_ui
         self.expand_all_checkbox = expand_all_checkbox
         self.global_auto_tune_checkbox = global_auto_tune_checkbox
         self.global_reset_button = global_reset_button
         
-        # Scrollable frame for parameters
-        canvas = tk.Canvas(self, height=500)
+        # Scrollable frame for parameters with soft styling
+        canvas = tk.Canvas(self, 
+                          height=500, 
+                          bg=AqualixColors.PEARL_WHITE,
+                          highlightthickness=0,
+                          relief='flat')
         scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
-        self.scrollable_frame = ttk.Frame(canvas)  # Store reference for refresh_ui
+        self.scrollable_frame = ColoredFrame(canvas, bg_color=AqualixColors.PEARL_WHITE)  # Store reference for refresh_ui
         
         self.scrollable_frame.bind(
             "<Configure>",
@@ -239,55 +258,76 @@ class ParameterPanel(ttk.Frame):
             self.create_step_frame(parent, step_key, step_info)
         
     def create_step_frame(self, parent, step_key, step_info):
-        """Create a collapsible frame for a processing step"""
-        # Main step frame
-        step_frame = ttk.LabelFrame(parent, text="", padding="5")
-        step_frame.pack(fill=tk.X, padx=5, pady=5)
+        """Create a collapsible frame for a processing step with section-specific colors"""
+        # Main step frame with section-specific color
+        bg_color = AqualixColors.get_section_color(step_key)
+        step_frame = SectionFrame(parent, section_name=step_key, relief='solid', bd=2)
+        step_frame.configure(bg=bg_color)
+        step_frame.pack(fill=tk.X, padx=8, pady=6)
         
-        # Header frame with enable/disable and collapse/expand
-        header_frame = ttk.Frame(step_frame)
-        header_frame.pack(fill=tk.X, pady=(0, 5))
+        # Header frame with colored background
+        header_frame = ColoredFrame(step_frame, bg_color=bg_color)
+        header_frame.pack(fill=tk.X, pady=(8, 6))
         
-        # Step enable/disable checkbox
+        # Step enable/disable checkbox with colored styling
         if step_info['enable_param']:
             enable_var = tk.BooleanVar(value=self.processor.get_parameter(step_info['enable_param']))
-            enable_checkbox = ttk.Checkbutton(
+            enable_checkbox = tk.Checkbutton(
                 header_frame,
                 text=step_info['title'],
                 variable=enable_var,
-                command=lambda: self.on_parameter_change(step_info['enable_param'], enable_var.get())
+                command=lambda: self.on_parameter_change(step_info['enable_param'], enable_var.get()),
+                bg=bg_color,
+                fg=AqualixColors.DEEP_NAVY,
+                font=('Arial', 10, 'bold'),
+                selectcolor=AqualixColors.PEARL_WHITE,
+                activebackground=bg_color,
+                relief='flat',
+                bd=0
             )
-            enable_checkbox.pack(side=tk.LEFT)
+            enable_checkbox.pack(side=tk.LEFT, padx=(8, 0), pady=4)
             
             # Store enable widget
             self.param_widgets[step_info['enable_param']] = enable_var
         else:
-            # If no enable parameter, create a simple label
-            enable_label = ttk.Label(header_frame, text=step_info['title'], font=('Arial', 10, 'bold'))
-            enable_label.pack(side=tk.LEFT)
+            # If no enable parameter, create a styled label
+            enable_label = tk.Label(header_frame, 
+                                  text=step_info['title'], 
+                                  font=('Arial', 10, 'bold'),
+                                  bg=bg_color,
+                                  fg=AqualixColors.DEEP_NAVY)
+            enable_label.pack(side=tk.LEFT, padx=(8, 0), pady=4)
             enable_checkbox = None
         
-        # Right side buttons frame
-        buttons_frame = ttk.Frame(header_frame)
-        buttons_frame.pack(side=tk.RIGHT)
+        # Right side buttons frame with colored background
+        buttons_frame = ColoredFrame(header_frame, bg_color=bg_color)
+        buttons_frame.pack(side=tk.RIGHT, padx=(0, 8))
         
-        # Auto-Tune checkbox
+        # Auto-Tune checkbox with soft styling
         auto_tune_var = tk.BooleanVar(value=True)
-        auto_tune_checkbox = ttk.Checkbutton(
+        auto_tune_checkbox = tk.Checkbutton(
             buttons_frame,
             text=t('auto_tune'),
             variable=auto_tune_var,
-            command=lambda: self.on_auto_tune_change(step_key, auto_tune_var.get())
+            command=lambda: self.on_auto_tune_change(step_key, auto_tune_var.get()),
+            bg=bg_color,
+            fg=AqualixColors.DEEP_NAVY,
+            font=('Arial', 8, 'normal'),
+            selectcolor=AqualixColors.PEARL_WHITE,
+            activebackground=bg_color,
+            relief='flat'
         )
-        auto_tune_checkbox.pack(side=tk.LEFT, padx=(0, 5))
+        auto_tune_checkbox.pack(side=tk.LEFT, padx=(0, 4), pady=2)
         
-        # Reset to defaults button
-        reset_button = ttk.Button(
+        # Reset to defaults button with accent styling
+        reset_button = ColoredButton(
             buttons_frame,
             text=t('reset_defaults'),
-            width=8,
-            command=lambda: self.reset_step_defaults(step_key)
+            command=lambda: self.reset_step_defaults(step_key),
+            style_type='accent'
         )
+        reset_button.configure(font=('Arial', 8, 'normal'), pady=4, padx=8)
+        reset_button.pack(side=tk.LEFT, padx=(4, 0), pady=2)
         reset_button.pack(side=tk.LEFT, padx=(0, 2))
         
         # Collapse/Expand button
@@ -300,13 +340,18 @@ class ParameterPanel(ttk.Frame):
         )
         expand_button.pack(side=tk.LEFT)
         
-        # Description label
-        desc_label = ttk.Label(step_frame, text=step_info['description'], 
-                             font=('Arial', 9), foreground='gray')
-        desc_label.pack(anchor='w', pady=(0, 5))
+        # Description label with soft styling
+        desc_label = tk.Label(step_frame, 
+                             text=step_info['description'], 
+                             font=('Arial', 9, 'italic'),
+                             fg=AqualixColors.MEDIUM_GRAY,
+                             bg=bg_color,
+                             wraplength=300,
+                             justify=tk.LEFT)
+        desc_label.pack(anchor='w', padx=8, pady=(0, 6))
         
-        # Parameters frame (collapsible)
-        params_frame = ttk.Frame(step_frame)
+        # Parameters frame (collapsible) with section color
+        params_frame = ColoredFrame(step_frame, bg_color=bg_color, relief='flat')
         # Don't pack initially - will be shown/hidden by toggle_step_expansion
         
         # Create parameter widgets within this step

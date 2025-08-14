@@ -15,6 +15,7 @@ from pathlib import Path
 
 from .image_processing import ImageProcessor
 from .ui_components import ParameterPanel, PipelinePanel, InteractivePreviewPanel, ImageInfoPanel, AboutPanel
+from .ui_colors import AqualixColors, ColoredFrame, ColoredButton
 from .logger import AqualixLogger
 from .localization import get_localization_manager, t
 
@@ -24,6 +25,12 @@ class ImageVideoProcessorApp:
         self.localization_manager = get_localization_manager()
         self.root.title(t('app_title'))
         self.root.geometry("1200x800")
+        
+        # Apply soft color scheme to main window
+        self.root.configure(bg=AqualixColors.PEARL_WHITE)
+        
+        # Configure ttk styles for consistent theming
+        self.setup_ttk_styles()
         
         # Initialize variables
         self.current_file = None
@@ -54,29 +61,93 @@ class ImageVideoProcessorApp:
         # Setup UI
         self.setup_ui()
         
+    def setup_ttk_styles(self):
+        """Setup custom TTK styles with aquatic color theme"""
+        style = ttk.Style()
+        
+        # Configure Notebook (tabs) style
+        style.configure('TNotebook', 
+                       background=AqualixColors.FOAM_WHITE,
+                       borderwidth=1,
+                       relief='solid')
+        
+        style.configure('TNotebook.Tab',
+                       background=AqualixColors.MIST_BLUE,
+                       foreground=AqualixColors.DEEP_NAVY,
+                       padding=[12, 8],
+                       font=('Arial', 9, 'normal'))
+        
+        # Active tab
+        style.map('TNotebook.Tab',
+                 background=[('selected', AqualixColors.SHALLOW_WATER),
+                           ('active', AqualixColors.MIST_BLUE)],
+                 foreground=[('selected', AqualixColors.DEEP_NAVY)])
+        
+        # Configure Frame styles
+        style.configure('Card.TFrame',
+                       background=AqualixColors.FOAM_WHITE,
+                       relief='solid',
+                       borderwidth=1)
+        
+        # Configure Button styles with aquatic theme
+        style.configure('Primary.TButton',
+                       background=AqualixColors.BUTTON_PRIMARY,
+                       foreground='white',
+                       padding=(16, 8),
+                       font=('Arial', 9, 'normal'))
+        
+        style.map('Primary.TButton',
+                 background=[('active', AqualixColors.BUTTON_PRIMARY_ACTIVE),
+                           ('pressed', AqualixColors.BUTTON_PRIMARY_ACTIVE)])
+        
+        style.configure('Secondary.TButton',
+                       background=AqualixColors.BUTTON_SECONDARY,
+                       foreground='white',
+                       padding=(16, 8))
+        
+        style.map('Secondary.TButton',
+                 background=[('active', AqualixColors.BUTTON_SECONDARY_ACTIVE)])
+        
+        style.configure('Accent.TButton',
+                       background=AqualixColors.BUTTON_ACCENT,
+                       foreground='white',
+                       padding=(16, 8))
+        
+        # Configure Label styles
+        style.configure('Heading.TLabel',
+                       background=AqualixColors.FOAM_WHITE,
+                       foreground=AqualixColors.DEEP_NAVY,
+                       font=('Arial', 11, 'bold'))
+        
+        style.configure('Section.TLabel',
+                       background=AqualixColors.MIST_BLUE,
+                       foreground=AqualixColors.DEEP_NAVY,
+                       font=('Arial', 10, 'bold'),
+                       padding=(8, 4))
+        
     def setup_ui(self):
         """Setup the main UI components"""
-        # Main container
-        main_frame = ttk.Frame(self.root)
-        main_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        # Main container with soft background
+        main_frame = ColoredFrame(self.root, bg_color=AqualixColors.PEARL_WHITE)
+        main_frame.pack(fill=tk.BOTH, expand=True, padx=8, pady=8)
         
-        # Top toolbar with language selector
+        # Top toolbar with subtle color
         self.create_toolbar(main_frame)
         
         # Main content area
-        content_frame = ttk.Frame(main_frame)
-        content_frame.pack(fill=tk.BOTH, expand=True, pady=(5, 0))
+        content_frame = ColoredFrame(main_frame, bg_color=AqualixColors.PEARL_WHITE)
+        content_frame.pack(fill=tk.BOTH, expand=True, pady=(8, 0))
         
-        # Left panel - Parameters and Pipeline in tabs
-        left_panel = ttk.Frame(content_frame)
-        left_panel.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 5))
+        # Left panel - Parameters and Pipeline in tabs with soft styling
+        left_panel = ColoredFrame(content_frame, bg_color=AqualixColors.FOAM_WHITE, relief='solid', bd=1)
+        left_panel.pack(side=tk.LEFT, fill=tk.Y, padx=(0, 8))
         
-        # Create notebook for tabs
-        self.notebook = ttk.Notebook(left_panel)
-        self.notebook.pack(fill=tk.BOTH, expand=True)
+        # Create notebook for tabs with custom styling
+        self.notebook = ttk.Notebook(left_panel, style='TNotebook')
+        self.notebook.pack(fill=tk.BOTH, expand=True, padx=4, pady=4)
         
-        # Parameters tab
-        params_frame = ttk.Frame(self.notebook)
+        # Parameters tab with soft background
+        params_frame = ColoredFrame(self.notebook, bg_color=AqualixColors.MIST_BLUE)
         self.notebook.add(params_frame, text=t('tab_parameters'))
         
         # Parameter panel
@@ -86,40 +157,40 @@ class ImageVideoProcessorApp:
         # Setup auto-tune callback
         self.processor.set_auto_tune_callback(self.param_panel.is_auto_tune_enabled)
         
-        # Pipeline tab
-        pipeline_frame = ttk.Frame(self.notebook)
+        # Pipeline tab with soft background
+        pipeline_frame = ColoredFrame(self.notebook, bg_color=AqualixColors.SECTION_COLOR_BALANCE)
         self.notebook.add(pipeline_frame, text=t('tab_operations'))
         
         # Pipeline panel
         self.pipeline_panel = PipelinePanel(pipeline_frame)
         self.pipeline_panel.pack(fill=tk.BOTH, expand=True)
         
-        # Image info tab
-        info_frame = ttk.Frame(self.notebook)
+        # Image info tab with soft background
+        info_frame = ColoredFrame(self.notebook, bg_color=AqualixColors.SECTION_UDCP)
         self.notebook.add(info_frame, text=t('tab_info'))
 
         # Image info panel
         self.info_panel = ImageInfoPanel(info_frame)
         self.info_panel.pack(fill=tk.BOTH, expand=True)
 
-        # Quality control tab
-        quality_frame = ttk.Frame(self.notebook)
+        # Quality control tab with soft background
+        quality_frame = ColoredFrame(self.notebook, bg_color=AqualixColors.SECTION_FUSION)
         self.notebook.add(quality_frame, text=t('tab_quality'))
 
         # Quality control panel
         from .quality_control_tab import QualityControlTab
         self.quality_panel = QualityControlTab(quality_frame, self, self.localization_manager)
         
-        # About tab
-        about_frame = ttk.Frame(self.notebook)
+        # About tab with soft background
+        about_frame = ColoredFrame(self.notebook, bg_color=AqualixColors.SANDY_BEIGE)
         self.notebook.add(about_frame, text=t('tab_about'))
         
         # About panel
         self.about_panel = AboutPanel(about_frame)
         self.about_panel.pack(fill=tk.BOTH, expand=True)
         
-        # Right panel - Preview
-        right_panel = ttk.Frame(content_frame)
+        # Right panel - Preview with elegant frame
+        right_panel = ColoredFrame(content_frame, bg_color=AqualixColors.FOAM_WHITE, relief='solid', bd=1)
         right_panel.pack(side=tk.RIGHT, fill=tk.BOTH, expand=True)
         
         # Preview panel
@@ -131,24 +202,28 @@ class ImageVideoProcessorApp:
         
     def create_toolbar(self, parent):
         """Create the top toolbar with file operations and navigation"""
-        toolbar = ttk.Frame(parent)
-        toolbar.pack(fill=tk.X, pady=(0, 5))
+        toolbar = ColoredFrame(parent, bg_color=AqualixColors.SHALLOW_WATER, relief='solid', bd=1)
+        toolbar.pack(fill=tk.X, pady=(0, 8), padx=0)
         
-        # File operations
-        ttk.Button(toolbar, text=t('select_file'), command=self.select_file).pack(side=tk.LEFT, padx=(0, 5))
-        ttk.Button(toolbar, text=t('select_folder'), command=self.select_folder).pack(side=tk.LEFT, padx=(0, 5))
+        # File operations with styled buttons
+        ColoredButton(toolbar, text=t('select_file'), command=self.select_file, style_type='primary').pack(side=tk.LEFT, padx=(8, 4), pady=4)
+        ColoredButton(toolbar, text=t('select_folder'), command=self.select_folder, style_type='primary').pack(side=tk.LEFT, padx=(4, 8), pady=4)
         
-        # Navigation
-        ttk.Button(toolbar, text=t('previous'), command=self.previous_file).pack(side=tk.LEFT, padx=(10, 2))
-        ttk.Button(toolbar, text=t('next'), command=self.next_file).pack(side=tk.LEFT, padx=(2, 5))
+        # Navigation with secondary style
+        ColoredButton(toolbar, text=t('previous'), command=self.previous_file, style_type='secondary').pack(side=tk.LEFT, padx=(16, 2), pady=4)
+        ColoredButton(toolbar, text=t('next'), command=self.next_file, style_type='secondary').pack(side=tk.LEFT, padx=(2, 8), pady=4)
         
-        # File info
-        self.file_info_label = ttk.Label(toolbar, text=t('no_files'))
-        self.file_info_label.pack(side=tk.LEFT, padx=(10, 0))
+        # File info with enhanced styling
+        self.file_info_label = tk.Label(toolbar, 
+                                       text=t('no_files'),
+                                       bg=AqualixColors.SHALLOW_WATER,
+                                       fg=AqualixColors.DEEP_NAVY,
+                                       font=('Arial', 9, 'normal'))
+        self.file_info_label.pack(side=tk.LEFT, padx=(16, 0), pady=4)
         
-        # Language selector (right side)
-        lang_frame = ttk.Frame(toolbar)
-        lang_frame.pack(side=tk.RIGHT, padx=(5, 10))
+        # Language selector (right side) with accent styling
+        lang_frame = ColoredFrame(toolbar, bg_color=AqualixColors.SHALLOW_WATER)
+        lang_frame.pack(side=tk.RIGHT, padx=(8, 16), pady=4)
         
         ttk.Label(lang_frame, text=t('language') + ':').pack(side=tk.LEFT, padx=(0, 5))
         self.language_var = tk.StringVar(value=self.localization_manager.get_language())
