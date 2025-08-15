@@ -16,7 +16,7 @@ if not exist "dist\Aqualix\Aqualix.exe" (
 REM Nom de l'archive avec date et version
 for /f "tokens=2-4 delims=/ " %%a in ('date /t') do set mydate=%%c-%%b-%%a
 for /f "tokens=1-2 delims=: " %%a in ('time /t') do set mytime=%%a-%%b
-set archive_name=Aqualix-v1.0.0-Windows-%mydate%
+set archive_name=Aqualix-v1.0.2-Windows-%mydate%
 
 echo Création de l'archive: %archive_name%.zip
 echo.
