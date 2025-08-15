@@ -29,6 +29,21 @@ except ImportError:
     }
 
 class ParameterPanel(ttk.Frame):
+
+    def _immediate_update(self):
+        """Immediate update for important operations (auto-tune, reset, etc.)"""
+        if hasattr(self, 'update_callback') and self.update_callback:
+            self.update_callback()
+
+    def update_parameter_visibility(self):
+        """Update visibility of parameters based on current settings (stub for compatibility)"""
+        # If you have conditional parameters, implement logic here. Otherwise, do nothing.
+        pass
+
+    def _execute_update(self):
+        """Execute the actual update callback (stub for compatibility)"""
+        if hasattr(self, 'update_callback') and self.update_callback:
+            self.update_callback()
     """Panel for adjusting processing parameters"""
     
     def __init__(self, parent, processor, update_callback: Callable, get_image_callback: Optional[Callable] = None):
@@ -57,40 +72,25 @@ class ParameterPanel(ttk.Frame):
                               text=t('parameters_title'), 
                               font=('Arial', 14, 'bold'))
         title_label.pack(pady=(8, 8))
-        
-        # Collapse/Expand control with styled background
-        controls_frame = ColoredFrame(self, bg_color=AqualixColors.SHALLOW_WATER, relief='solid', bd=1)
-        controls_frame.pack(fill=tk.X, pady=(0, 12), padx=8)
-        
-        self.expand_all_var = tk.BooleanVar(value=False)  # Start with all collapsed
-        expand_all_checkbox = tk.Checkbutton(
-            controls_frame, 
-            text=t('expand_all_sections'),
-            variable=self.expand_all_var,
-            command=self.toggle_all_sections,
-            bg=AqualixColors.SHALLOW_WATER,
-            fg=AqualixColors.DEEP_NAVY,
-            font=('Arial', 9, 'normal'),
-            selectcolor=AqualixColors.PEARL_WHITE,
-            activebackground=AqualixColors.SHALLOW_WATER
-        )
-        expand_all_checkbox.pack(side=tk.LEFT, padx=(8, 0), pady=6)
-        
-        # Global Auto-Tune control with accent styling
-        self.global_auto_tune_var = tk.BooleanVar(value=True)
-        global_auto_tune_checkbox = tk.Checkbutton(
+
+        # Main frame to hold controls and canvas+scrollbar
+        main_frame = tk.Frame(self)
+        main_frame.pack(fill=tk.BOTH, expand=True)
+
+        # Controls frame (global controls)
+        controls_frame = ColoredFrame(main_frame, bg_color=AqualixColors.SHALLOW_WATER, relief='solid', bd=1)
+        controls_frame.pack(fill=tk.X, pady=(0, 12))
+
+        # Global Auto-Tune action button (remplace le checkbox)
+        global_auto_tune_button = ColoredButton(
             controls_frame,
             text=t('auto_tune_all'),
-            variable=self.global_auto_tune_var,
             command=self.toggle_all_auto_tune,
-            bg=AqualixColors.SHALLOW_WATER,
-            fg=AqualixColors.DEEP_NAVY,
-            font=('Arial', 9, 'bold'),
-            selectcolor=AqualixColors.SUNSET_GOLD,
-            activebackground=AqualixColors.SHALLOW_WATER
+            style_type='secondary'
         )
-        global_auto_tune_checkbox.pack(side=tk.LEFT, padx=(16, 0), pady=6)
-        
+        global_auto_tune_button.configure(font=('Arial', 9, 'bold'))
+        global_auto_tune_button.pack(side=tk.LEFT, padx=(8, 0), pady=6)
+
         # Global reset button with accent styling
         global_reset_button = ColoredButton(
             controls_frame,
@@ -99,36 +99,46 @@ class ParameterPanel(ttk.Frame):
             style_type='accent'
         )
         global_reset_button.configure(font=('Arial', 9, 'normal'))
-        global_reset_button.pack(side=tk.RIGHT, padx=(8, 8), pady=4)
-        
-        # Store checkbox and button for refresh_ui
-        self.expand_all_checkbox = expand_all_checkbox
-        self.global_auto_tune_checkbox = global_auto_tune_checkbox
+        global_reset_button.pack(side=tk.RIGHT, padx=(0, 8), pady=4)
+
+        # Store controls for refresh_ui
+        self.global_auto_tune_button = global_auto_tune_button
         self.global_reset_button = global_reset_button
-        
+
+        # Frame for canvas + scrollbar
+        content_frame = tk.Frame(main_frame)
+        content_frame.pack(fill=tk.BOTH, expand=True)
+
         # Scrollable frame for parameters with soft styling
-        canvas = tk.Canvas(self, 
+        canvas = tk.Canvas(content_frame, 
                           height=500, 
                           bg=AqualixColors.PEARL_WHITE,
                           highlightthickness=0,
                           relief='flat')
-        scrollbar = ttk.Scrollbar(self, orient="vertical", command=canvas.yview)
+        scrollbar = ttk.Scrollbar(content_frame, orient="vertical", command=canvas.yview)
         self.scrollable_frame = ColoredFrame(canvas, bg_color=AqualixColors.PEARL_WHITE)  # Store reference for refresh_ui
-        
+
         self.scrollable_frame.bind(
             "<Configure>",
             lambda e: canvas.configure(scrollregion=canvas.bbox("all"))
         )
-        
+
         canvas.create_window((0, 0), window=self.scrollable_frame, anchor="nw")
         canvas.configure(yscrollcommand=scrollbar.set)
-        
+
+        # --- Correction alignement: forcer la largeur de scrollable_frame à celle du canvas ---
+        def _resize_scrollable_frame(event):
+            canvas_width = event.width
+            self.scrollable_frame.configure(width=canvas_width)
+        canvas.bind("<Configure>", _resize_scrollable_frame)
+        # --- Fin correction alignement ---
+
         # Create parameter widgets
         self.create_step_based_widgets(self.scrollable_frame)
-        
+
         # Initialize parameter visibility
         self.update_parameter_visibility()
-        
+
         canvas.pack(side="left", fill="both", expand=True)
         scrollbar.pack(side="right", fill="y")
         
@@ -263,12 +273,12 @@ class ParameterPanel(ttk.Frame):
         bg_color = AqualixColors.get_section_color(step_key)
         step_frame = SectionFrame(parent, section_name=step_key, relief='solid', bd=2)
         step_frame.configure(bg=bg_color)
-        step_frame.pack(fill=tk.X, padx=8, pady=6)
-        
+        step_frame.pack(fill=tk.X, expand=True, pady=6)
+
         # Header frame with colored background
         header_frame = ColoredFrame(step_frame, bg_color=bg_color)
-        header_frame.pack(fill=tk.X, pady=(8, 6))
-        
+        header_frame.pack(fill=tk.X, expand=True, pady=(8, 6))
+
         # Step enable/disable checkbox with colored styling
         if step_info['enable_param']:
             enable_var = tk.BooleanVar(value=self.processor.get_parameter(step_info['enable_param']))
@@ -286,39 +296,34 @@ class ParameterPanel(ttk.Frame):
                 bd=0
             )
             enable_checkbox.pack(side=tk.LEFT, padx=(8, 0), pady=4)
-            
             # Store enable widget
             self.param_widgets[step_info['enable_param']] = enable_var
         else:
             # If no enable parameter, create a styled label
-            enable_label = tk.Label(header_frame, 
-                                  text=step_info['title'], 
-                                  font=('Arial', 10, 'bold'),
-                                  bg=bg_color,
-                                  fg=AqualixColors.DEEP_NAVY)
+            enable_label = tk.Label(
+                header_frame,
+                text=step_info['title'],
+                font=('Arial', 10, 'bold'),
+                bg=bg_color,
+                fg=AqualixColors.DEEP_NAVY
+            )
             enable_label.pack(side=tk.LEFT, padx=(8, 0), pady=4)
             enable_checkbox = None
-        
+
         # Right side buttons frame with colored background
         buttons_frame = ColoredFrame(header_frame, bg_color=bg_color)
         buttons_frame.pack(side=tk.RIGHT, padx=(0, 8))
-        
-        # Auto-Tune checkbox with soft styling
-        auto_tune_var = tk.BooleanVar(value=True)
-        auto_tune_checkbox = tk.Checkbutton(
+
+        # Auto-Tune action button (remplace la checkbox)
+        auto_tune_button = ColoredButton(
             buttons_frame,
             text=t('auto_tune'),
-            variable=auto_tune_var,
-            command=lambda: self.on_auto_tune_change(step_key, auto_tune_var.get()),
-            bg=bg_color,
-            fg=AqualixColors.DEEP_NAVY,
-            font=('Arial', 8, 'normal'),
-            selectcolor=AqualixColors.PEARL_WHITE,
-            activebackground=bg_color,
-            relief='flat'
+            command=lambda: self._perform_auto_tune_step(step_key),
+            style_type='secondary'
         )
-        auto_tune_checkbox.pack(side=tk.LEFT, padx=(0, 4), pady=2)
-        
+        auto_tune_button.configure(font=('Arial', 8, 'normal'), pady=4, padx=8)
+        auto_tune_button.pack(side=tk.LEFT, padx=(0, 4), pady=2)
+
         # Reset to defaults button with accent styling
         reset_button = ColoredButton(
             buttons_frame,
@@ -327,9 +332,8 @@ class ParameterPanel(ttk.Frame):
             style_type='accent'
         )
         reset_button.configure(font=('Arial', 8, 'normal'), pady=4, padx=8)
-        reset_button.pack(side=tk.LEFT, padx=(4, 0), pady=2)
-        reset_button.pack(side=tk.LEFT, padx=(0, 2))
-        
+        reset_button.pack(side=tk.LEFT, padx=(4, 2), pady=2)
+
         # Collapse/Expand button
         self.step_expanded[step_key] = tk.BooleanVar(value=False)  # Collapsed by default
         expand_button = ttk.Button(
@@ -339,39 +343,40 @@ class ParameterPanel(ttk.Frame):
             command=lambda: self.toggle_step_expansion(step_key)
         )
         expand_button.pack(side=tk.LEFT)
-        
+
         # Description label with soft styling
-        desc_label = tk.Label(step_frame, 
-                             text=step_info['description'], 
-                             font=('Arial', 9, 'italic'),
-                             fg=AqualixColors.MEDIUM_GRAY,
-                             bg=bg_color,
-                             wraplength=300,
-                             justify=tk.LEFT)
-        desc_label.pack(anchor='w', padx=8, pady=(0, 6))
-        
+        desc_label = tk.Label(
+            step_frame,
+            text=step_info['description'],
+            font=('Arial', 9, 'italic'),
+            fg=AqualixColors.MEDIUM_GRAY,
+            bg=bg_color,
+            wraplength=300,
+            justify=tk.LEFT
+        )
+        desc_label.pack(anchor='w', fill=tk.X, padx=8, pady=(0, 6))
+
         # Parameters frame (collapsible) with section color
         params_frame = ColoredFrame(step_frame, bg_color=bg_color, relief='flat')
         # Don't pack initially - will be shown/hidden by toggle_step_expansion
-        
+
         # Create parameter widgets within this step
         for param_info in step_info['parameters']:
             self.create_single_parameter_widget(params_frame, param_info['name'], param_info['info'])
-        
-        # Store references
+
+        # Store references (plus de auto_tune_var ni auto_tune_checkbox)
         self.step_frames[step_key] = {
             'main_frame': step_frame,
             'params_frame': params_frame,
             'expand_button': expand_button,
             'enable_checkbox': enable_checkbox,
-            'auto_tune_checkbox': auto_tune_checkbox,
-            'auto_tune_var': auto_tune_var
+            'auto_tune_button': auto_tune_button
         }
         
     def create_single_parameter_widget(self, parent, param_name, info):
         """Create a single parameter widget"""
         frame = ttk.Frame(parent)
-        frame.pack(fill=tk.X, padx=10, pady=2)
+        frame.pack(fill=tk.X, expand=True, pady=2)
         
         # Parameter label
         label = ttk.Label(frame, text=info['label'], font=('Arial', 9))
@@ -561,9 +566,14 @@ class ParameterPanel(ttk.Frame):
         # Update parameter visibility if this is a method selection
         if param_name == 'white_balance_method':
             self.update_parameter_visibility()
-        
-        # Use debounced update for smooth slider interaction
-        self._debounced_update()
+
+        # Pour les paramètres de fusion critiques, forcer un update immédiat
+        if param_name in ('fusion_saturation_weight', 'fusion_exposedness_weight'):
+            if hasattr(self, 'update_callback') and self.update_callback:
+                self.update_callback()
+        else:
+            # Use debounced update for smooth slider interaction
+            self._debounced_update()
     
     def _debounced_update(self):
         """Debounced update to prevent excessive preview refreshes during slider movements"""
@@ -574,117 +584,17 @@ class ParameterPanel(ttk.Frame):
         # Schedule new update
         self._update_timer = self.after(self._debounce_delay, self._execute_update)
     
-    def _immediate_update(self):
-        """Immediate update for important operations (auto-tune, reset, etc.)"""
-        # Cancel any pending debounced update
-        if self._update_timer is not None:
-            self.after_cancel(self._update_timer)
-            self._update_timer = None
-        
-        # Execute update immediately
-        self.update_callback()
-    
-    def _execute_update(self):
-        """Execute the actual update callback"""
-        self._update_timer = None
-        self.update_callback()
-    
-    def update_parameter_visibility(self):
-        """Update visibility of parameters based on current settings"""
-        param_info = self.processor.get_parameter_info()
-        current_method = self.processor.get_parameter('white_balance_method')
-        
-        # First, forget all conditional frames to reset their packing order
-        for param_name, info in param_info.items():
-            if 'visible_when' in info:
-                frame_key = f"{param_name}_frame"
-                frame = self.param_widgets.get(frame_key)
-                if frame:
-                    frame.pack_forget()
-        
-        # Then, re-pack frames in the correct order based on visibility
-        for param_name, frame in self.frame_order:
-            info = param_info.get(param_name, {})
-            
-            if 'visible_when' in info:
-                condition = info['visible_when']
-                show = True
-                for condition_param, condition_value in condition.items():
-                    current_value = self.processor.get_parameter(condition_param)
-                    if current_value != condition_value:
-                        show = False
-                        break
-                
-                if show:
-                    frame.pack(fill=tk.X, padx=5, pady=2)
-            else:
-                # Non-conditional parameters should always be visible
-                if frame.winfo_manager() == '':  # Not packed
-                    frame.pack(fill=tk.X, padx=5, pady=2)
-    
-    def toggle_all_sections(self):
-        """Toggle all parameter step sections based on checkbox state"""
-        expand_all = self.expand_all_var.get()
-        
-        # Force all sections to the desired state
-        for step_key in self.step_expanded:
-            current_state = self.step_expanded[step_key].get()  # Use .get() for BooleanVar
-            
-            # Set to expanded state if checkbox is checked, collapsed if unchecked
-            if expand_all and not current_state:
-                # Need to expand this section
-                self.toggle_step_expansion(step_key)
-            elif not expand_all and current_state:
-                # Need to collapse this section  
-                self.toggle_step_expansion(step_key)
-    
     def toggle_all_auto_tune(self):
-        """Toggle all auto-tune checkboxes based on global auto-tune state"""
-        global_auto_tune = self.global_auto_tune_var.get()
-        
-        print(f"Global Auto-tune: {'enabling' if global_auto_tune else 'disabling'} for all steps")
-        print(f"Available steps in self.step_frames: {list(self.step_frames.keys())}")
-        
-        # Flag to prevent sync recursion
-        self._syncing_auto_tune = True
-        
-        try:
-            # Set all individual auto-tune checkboxes to match the global state
-            changed_steps = []
-            for step_key, frame_data in self.step_frames.items():
-                auto_tune_var = frame_data.get('auto_tune_var')
-                if auto_tune_var:
-                    current_state = auto_tune_var.get()
-                    print(f"Step {step_key}: current_state={current_state}, global_auto_tune={global_auto_tune}")
-                    
-                    # Only change if different from desired state
-                    if global_auto_tune != current_state:
-                        print(f"  Changing {step_key} from {current_state} to {global_auto_tune}")
-                        auto_tune_var.set(global_auto_tune)
-                        changed_steps.append(step_key)
-                    else:
-                        print(f"  {step_key} already at desired state {global_auto_tune}")
-                else:
-                    print(f"Step {step_key}: no auto_tune_var found!")
-            
-            print(f"Changed steps: {changed_steps}")
-            
-            # If we enabled auto-tune, run auto-tune for all changed steps
-            if global_auto_tune and changed_steps:
-                print(f"Running auto-tune for steps: {changed_steps}")
-                for step_key in changed_steps:
-                    # Perform auto-tune for this step (without triggering sync)
-                    self._perform_auto_tune_step(step_key)
-            
-            # Always trigger preview update after changing global auto-tune
-            if hasattr(self, 'update_callback') and self.update_callback:
-                self._immediate_update()
-            
-            print(f"Global Auto-tune: {'enabled' if global_auto_tune else 'disabled'} for all steps")
-            
-        finally:
-            # Clear sync flag
-            self._syncing_auto_tune = False
+        """Exécute l'auto-tune sur toutes les étapes du pipeline (remplace le toggle global)."""
+        print("Auto-tune global : exécution sur toutes les étapes du pipeline.")
+        for step_key in self.step_frames:
+            self._perform_auto_tune_step(step_key)
+        if hasattr(self, 'update_callback') and self.update_callback:
+            self._immediate_update()
+    
+
+    # (toggle_all_sections supprimé)
+    
     
     def trigger_auto_tune_for_new_image(self):
         """Trigger auto-tune for all enabled steps when a new image is loaded"""
@@ -724,73 +634,22 @@ class ParameterPanel(ttk.Frame):
         try:
             # Reset parameters in the processor
             self.processor.reset_step_parameters(step_key)
-            
-            # Uncheck the auto-tune checkbox for this step
-            if step_key in self.step_frames:
-                auto_tune_var = self.step_frames[step_key].get('auto_tune_var')
-                if auto_tune_var:
-                    auto_tune_var.set(False)
-                    print(f"Auto-tune disabled for {step_key}")
-            
             # Update UI widgets to reflect the new values
             self.update_ui_from_parameters()
-            
-            # Trigger preview update
-            self._immediate_update()
-            
+            # Forcer la mise à jour de l'image affichée
+            if hasattr(self, 'update_callback') and self.update_callback:
+                self.update_callback()
         except Exception as e:
             print(f"Error resetting step {step_key}: {e}")
     
-    def on_auto_tune_change(self, step_key: str, enabled: bool):
-        """Handle auto-tune checkbox state change"""
-        print(f"Auto-tune for {step_key}: {'enabled' if enabled else 'disabled'}")
-        
-        # If auto-tune is enabled, immediately perform auto-tuning
-        if enabled:
-            self._perform_auto_tune_step(step_key)
-        
-        # Update global auto-tune state to reflect individual checkboxes
-        self.sync_global_auto_tune_state()
-        
-        # Trigger preview update to reflect any parameter changes
-        if self.update_callback:
-            self._immediate_update()
+
+    # La gestion de l'état auto-tune par checkbox n'est plus nécessaire
     
-    def sync_global_auto_tune_state(self):
-        """Synchronize global auto-tune checkbox with individual step states"""
-        # Skip sync if we're already syncing to avoid recursion
-        if getattr(self, '_syncing_auto_tune', False):
-            return
-            
-        # Count how many steps have auto-tune enabled
-        enabled_count = 0
-        total_count = 0
-        
-        for step_key, frame_data in self.step_frames.items():
-            auto_tune_var = frame_data.get('auto_tune_var')
-            if auto_tune_var:
-                total_count += 1
-                if auto_tune_var.get():
-                    enabled_count += 1
-        
-        # Set global checkbox based on individual states
-        # - If all are enabled: global = True
-        # - If none or some are enabled: global = False
-        if total_count > 0:
-            global_should_be_enabled = (enabled_count == total_count)
-            current_global_state = self.global_auto_tune_var.get()
-            
-            # Only change if different to avoid recursion
-            if global_should_be_enabled != current_global_state:
-                print(f"Syncing global auto-tune: {current_global_state} -> {global_should_be_enabled}")
-                self.global_auto_tune_var.set(global_should_be_enabled)
+
+    # La synchronisation de l'état global n'est plus utile
     
-    def is_auto_tune_enabled(self, step_key: str) -> bool:
-        """Check if auto-tune is enabled for a specific step"""
-        if step_key in self.step_frames:
-            auto_tune_var = self.step_frames[step_key].get('auto_tune_var')
-            return auto_tune_var.get() if auto_tune_var else False
-        return False
+
+    # Cette méthode n'est plus utile (plus d'état auto-tune par étape)
     def _perform_auto_tune_step(self, step_key: str):
         """Auto-tune parameters for a specific step using image analysis"""
         try:
@@ -798,63 +657,38 @@ class ParameterPanel(ttk.Frame):
             if not self.get_image_callback:
                 print("No image callback available for auto-tuning")
                 return False
-                
             original_image = self.get_image_callback()
             if original_image is None:
                 print("No image loaded for auto-tuning")
                 return False
-            
             # Perform auto-tuning for the specific step
-            # optimized_params = self.processor.auto_tune_step(step_key, original_image)
             optimized_params = self.processor.enhanced_auto_tune_step(original_image, step_key)
-            
-            
             if optimized_params:
                 # Apply optimized parameters
                 for param_name, value in optimized_params.items():
                     self.processor.set_parameter(param_name, value)
-                
                 # Update UI widgets to reflect the new values
                 self.update_ui_from_parameters()
-                
+                # Forcer la mise à jour de l'image affichée
+                if hasattr(self, 'update_callback') and self.update_callback:
+                    self.update_callback()
                 print(f"Auto-tuned {step_key} with {len(optimized_params)} parameters")
                 return True
-                
         except Exception as e:
             print(f"Error auto-tuning step {step_key}: {e}")
             return False
     
     def reset_all_parameters(self):
-        """Reset ALL parameters to their default values"""
+        """Reset ALL parameters to their default values (chaque étape du pipeline)."""
         try:
-            print("DEBUG: Starting reset_all_parameters()")
-            
-            # Get all default parameters
-            default_params = self.processor.get_default_parameters()
-            
-            # Reset each parameter to its default value
-            for param_name, default_value in default_params.items():
-                self.processor.set_parameter(param_name, default_value)
-            
-            print("DEBUG: Parameters reset to defaults")
-            
-            # Update UI widgets to reflect the new parameter values FIRST
-            # This must happen BEFORE we modify auto-tune checkboxes
-            self.update_ui_from_parameters()
-            
-            # Set global auto-tune to False and let toggle_all_auto_tune handle the sync
-            # This will automatically uncheck all individual auto-tune checkboxes
-            print("DEBUG: Setting global_auto_tune_var to False")
-            self.global_auto_tune_var.set(False)
-            
-            print("DEBUG: Calling toggle_all_auto_tune()")
-            self.toggle_all_auto_tune()
-            
-            # DON'T call refresh_ui() here as it recreates widgets with default auto-tune=True
-            # The parameter visibility is handled by update_ui_from_parameters() above
-            
-            print("All parameters reset to default values and auto-tune disabled")
-            
+            print("DEBUG: Starting reset_all_parameters() (par étape)")
+            # Réinitialiser chaque étape du pipeline
+            for step_key in self.step_frames:
+                self.reset_step_defaults(step_key)
+            # Rafraîchir l'affichage général
+            if hasattr(self, 'update_callback') and self.update_callback:
+                self.update_callback()
+            print("All steps reset to default values.")
         except Exception as e:
             print(f"Error resetting all parameters: {e}")
     
@@ -896,8 +730,7 @@ class ParameterPanel(ttk.Frame):
                 break
         
         # Update button texts
-        if hasattr(self, 'expand_all_checkbox'):
-            self.expand_all_checkbox.config(text=t('expand_all_sections'))
+    # (expand_all_checkbox supprimé du refresh_ui)
         
         if hasattr(self, 'global_reset_button'):
             self.global_reset_button.config(text=t('reset_all_parameters'))
