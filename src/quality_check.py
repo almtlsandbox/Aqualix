@@ -87,12 +87,13 @@ class PostProcessingQualityChecker:
         green_channel = img_float[:, :, 1]  
         blue_channel = img_float[:, :, 2]
         
-        # Detect pixels with excessive red dominance
-        red_dominant = (red_channel > 0.8) & (red_channel > green_channel + 0.3) & (red_channel > blue_channel + 0.4)
+        # Detect pixels with excessive red dominance (seuils optimisés et sensibles)
+        # Critère optimisé : rouge dominant avec différences détectables
+        red_dominant = (red_channel > 0.45) & (red_channel > green_channel + 0.08) & (red_channel > blue_channel + 0.08)
         extreme_red_pixels = np.sum(red_dominant) / total_pixels
         
         # Check for magenta shift (common Beer-Lambert over-correction artifact)
-        magenta_mask = (red_channel > 0.7) & (blue_channel > 0.5) & (green_channel < 0.4)
+        magenta_mask = (red_channel > 0.40) & (blue_channel > 0.25) & (green_channel < 0.30)
         magenta_pixels = np.sum(magenta_mask) / total_pixels
         
         # Calculate red dominance ratio
@@ -380,36 +381,37 @@ class PostProcessingQualityChecker:
         return entropy
     
     def _calculate_overall_score(self, results: Dict[str, Any]) -> float:
-        """Calculate overall quality score from 0-10"""
+        """Calculate overall quality score from 0-10 with realistic thresholds"""
         if 'error' in results:
             return 0.0
-        
+
         scores = []
-        
-        # Check unrealistic colors (weight: 0.25)
+
+        # Check unrealistic colors (weight: 0.25) - COEFFICIENTS CORRIGÉS
         if 'unrealistic_colors' in results:
             data = results['unrealistic_colors']
             extreme_red = data.get('extreme_red_pixels', 0)
             magenta = data.get('magenta_pixels', 0)
-            score = max(0, 10 - extreme_red * 100 - magenta * 50)
+            # Coefficients plus réalistes: 5% de rouge extrême = score 5/10
+            score = max(0, 10 - extreme_red * 60 - magenta * 40)
             scores.append(score * 0.25)
-        
-        # Check saturation issues (weight: 0.20)
+
+        # Check saturation issues (weight: 0.20) - COEFFICIENTS CORRIGÉS  
         if 'saturation_analysis' in results:
             data = results['saturation_analysis']
             clipped = data.get('clipped_saturation', 0)
             highly_sat = data.get('highly_saturated_pixels', 0)
-            score = max(0, 10 - clipped * 200 - highly_sat * 50)
+            # Coefficients plus réalistes: 2% clipping = score 6/10
+            score = max(0, 10 - clipped * 100 - highly_sat * 30)
             scores.append(score * 0.20)
-        
-        # Check noise amplification (weight: 0.15)
+
+        # Check noise amplification (weight: 0.15) - COEFFICIENT CORRIGÉ
         if 'color_noise_analysis' in results:
             data = results['color_noise_analysis']
             red_noise = data.get('red_noise_amplification', 0)
-            score = max(0, 10 - red_noise * 5)
-            scores.append(score * 0.15)
-        
-        # Check halo artifacts (weight: 0.15)
+            # Coefficient plus réaliste: amplification 2x = score 5/10
+            score = max(0, 10 - (red_noise - 1) * 4)  # Baseline à 1.0
+            scores.append(score * 0.15)        # Check halo artifacts (weight: 0.15)
         if 'halo_artifacts' in results:
             data = results['halo_artifacts']
             halo = data.get('halo_indicator', 0)

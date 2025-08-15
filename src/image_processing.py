@@ -286,7 +286,8 @@ class ImageProcessor:
         for operation in self.pipeline_order:
             # Check if auto-tune is enabled for this step and perform it
             if self.auto_tune_callback and self.auto_tune_callback(operation):
-                optimized_params = self.auto_tune_step(operation, image)
+                #optimized_params = self.auto_tune_step(operation, image)
+                optimized_params = self.enhanced_auto_tune_step(image, operation)
                 # Apply optimized parameters directly to the processor
                 if optimized_params:
                     for param_name, value in optimized_params.items():
@@ -1813,9 +1814,6 @@ class ImageProcessor:
             
             optimized_params = {}
             
-            # Enable white balance by default
-            optimized_params['white_balance_enabled'] = True
-            
             # Choose optimal white balance method based on color characteristics
             if g_ratio > 0.4:  # Strong green cast (lake/freshwater)
                 optimized_params['white_balance_method'] = 'lake_green_water'
@@ -1875,10 +1873,7 @@ class ImageProcessor:
             turbidity = np.mean(np.abs(img_gray.astype(np.float32) - mean_filtered)) / 255.0
             
             optimized_params = {}
-            
-            # Enable UDCP by default for underwater images
-            optimized_params['udcp_enabled'] = True
-            
+                      
             # Adjust omega based on water clarity (gentle values)
             if turbidity > 0.15:  # Murky water
                 optimized_params['udcp_omega'] = 0.4  # Very gentle haze removal
@@ -1941,10 +1936,7 @@ class ImageProcessor:
             overall_darkness = 1.0 - np.mean([r_mean, g_mean, b_mean])
             
             optimized_params = {}
-            
-            # Enable Beer-Lambert correction by default for underwater images
-            optimized_params['beer_lambert_enabled'] = True
-            
+                        
             # Depth factor based on overall image darkness
             optimized_params['beer_lambert_depth_factor'] = min(2.0, 0.5 + overall_darkness * 2.0)
             
@@ -1993,10 +1985,7 @@ class ImageProcessor:
             sat_std = np.std(s)
             
             optimized_params = {}
-            
-            # Enable color rebalancing by default
-            optimized_params['color_rebalance_enabled'] = True
-            
+                       
             # Adjust diagonal elements (main channel gains)
             optimized_params['color_rebalance_rr'] = min(2.0, 1.0 + (1.0 - sat_mean) * 0.5)
             optimized_params['color_rebalance_gg'] = 1.0
@@ -2063,10 +2052,7 @@ class ImageProcessor:
             local_contrast = np.mean(np.abs(img_gray.astype(np.float32) - mean_filtered)) / 255.0
             
             optimized_params = {}
-            
-            # Enable histogram equalization by default
-            optimized_params['hist_eq_enabled'] = True
-            
+                        
             # Choose method based on image characteristics
             if contrast_std < 0.1:  # Very low contrast - use global
                 optimized_params['hist_eq_method'] = 'global'
@@ -2132,10 +2118,7 @@ class ImageProcessor:
             edge_density = np.sum(edges > 0) / (edges.shape[0] * edges.shape[1])
             
             optimized_params = {}
-            
-            # Enable multiscale fusion by default for enhanced results
-            optimized_params['multiscale_fusion_enabled'] = True
-            
+                        
             # Adjust pyramid levels based on image size and detail
             height, width = img_gray.shape
             base_levels = 4 if min(width, height) > 800 else 3
@@ -2314,10 +2297,7 @@ class ImageProcessor:
             edge_density = np.sum(edges > 0) / (edges.shape[0] * edges.shape[1])
             
             optimized_params = {}
-            
-            # Enable UDCP with enhanced analysis
-            optimized_params['udcp_enabled'] = True
-            
+                        
             # Enhanced omega estimation (Drews method + Berman improvements)
             if bg_ratio > 1.2 and br_ratio > 2.0:  # Clear blue water
                 optimized_params['udcp_omega'] = 0.7 + min(0.15, turbidity * 0.5)
@@ -2441,10 +2421,7 @@ class ImageProcessor:
                 water_type = "standard_underwater"
             
             optimized_params = {}
-            
-            # Enable Beer-Lambert with enhanced analysis
-            optimized_params['beer_lambert_enabled'] = True
-            
+                        
             # Enhanced depth factor estimation
             base_depth = 0.15
             if water_type == "clear_oceanic":
@@ -2565,10 +2542,7 @@ class ImageProcessor:
             saturation_mean = np.mean(hsv[:,:,1]) / 255.0
             
             optimized_params = {}
-            
-            # Enable color rebalancing
-            optimized_params['color_rebalance_enabled'] = True
-            
+                        
             # 5. Adaptive color correction factors (Li et al. approach)
             if environment == "deep_blue_water":
                 # Strong blue cast - aggressive red enhancement
@@ -2694,10 +2668,7 @@ class ImageProcessor:
                     peaks += 1
             
             optimized_params = {}
-            
-            # Enable histogram equalization
-            optimized_params['hist_eq_enabled'] = True
-            
+                        
             # 5. Adaptive method selection
             if local_contrast < 15.0:  # Very low contrast
                 if peaks <= 1:  # Uniform distribution
@@ -2804,9 +2775,6 @@ class ImageProcessor:
             detail_15 = np.mean(np.abs(gray.astype(np.float32) - blur_15))
             
             optimized_params = {}
-            
-            # Enable multiscale fusion
-            optimized_params['multiscale_fusion_enabled'] = True
             
             # 6. Adaptive weight calculation (Ancuti approach for underwater)
             

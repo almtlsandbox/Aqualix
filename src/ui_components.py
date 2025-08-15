@@ -805,7 +805,9 @@ class ParameterPanel(ttk.Frame):
                 return False
             
             # Perform auto-tuning for the specific step
-            optimized_params = self.processor.auto_tune_step(step_key, original_image)
+            # optimized_params = self.processor.auto_tune_step(step_key, original_image)
+            optimized_params = self.processor.enhanced_auto_tune_step(original_image, step_key)
+            
             
             if optimized_params:
                 # Apply optimized parameters

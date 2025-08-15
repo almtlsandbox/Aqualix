@@ -1180,3 +1180,15 @@ Mettre a jour le todo.txt, puis deplacer tous les fichiers qui le necessite tels
 💫 **EXPÉRIENCE**: Interface professionnelle responsive pour workflow édition moderne
 
 STATUS: ✅ **SESSION COMPLÈTE** - Prêt pour commit et déploiement production
+
+
+
+
+
+----> Pour chacun operation de traitement, je veux un check box (uncheck par defaut) pour choisir entre auto-tune enhanced ou non.
+
+----> Les parametres de saturation et de exposedness de l'operation de fusion ne semblent avoir aucun impact lorsque je change les slider dans le UI
+
+---->  Il semble que les auto tune peuvent definir des valeurs hors des ranges des sliders. Peut-etre les ranges ne sont-t-ils pas bon - en particulier le facteur de profondeur de Beert-Lambert, le auto-tune donne presque toujours un facteur superieur a 1.0
+
+

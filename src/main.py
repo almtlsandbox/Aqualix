@@ -473,14 +473,8 @@ class ImageVideoProcessorApp:
             )
             
             # Mark that full-size processed image needs to be updated when needed
-            # CRITICAL FIX: Only clear cache if loading new image, not on parameter changes
-            if self.loading_new_image:
-                self.processed_image = None
-                self.logger.info("Cleared full resolution cache for new image")
-            else:
-                # Parameter change - keep cached image if it exists but mark as potentially outdated
-                if self.processed_image is not None:
-                    self.logger.info("Parameter changed - full resolution cache may be outdated")
+            self.processed_image = None
+            self.logger.info("Cleared full resolution cache for new image")
             
             # Update preview panel with preview images
             # Pass reset_view=True if loading new image, False if just updating parameters
