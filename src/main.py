@@ -154,8 +154,7 @@ class ImageVideoProcessorApp:
         self.param_panel = ParameterPanel(params_frame, self.processor, self.update_preview, lambda: self.original_image)
         self.param_panel.pack(fill=tk.BOTH, expand=True)
         
-        # Setup auto-tune callback
-        self.processor.set_auto_tune_callback(self.param_panel.is_auto_tune_enabled)
+    # (Auto-tune par action bouton, plus de callback d'état auto-tune)
         
         # Pipeline tab with soft background
         pipeline_frame = ColoredFrame(self.notebook, bg_color=AqualixColors.SECTION_COLOR_BALANCE)

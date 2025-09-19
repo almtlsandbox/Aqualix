@@ -1185,10 +1185,15 @@ STATUS: ✅ **SESSION COMPLÈTE** - Prêt pour commit et déploiement production
 
 
 
-----> Pour chacun operation de traitement, je veux un check box (uncheck par defaut) pour choisir entre auto-tune enhanced ou non.
+----> je veux remplacer les boutons autotune par des actions implantees par des boutons - c'est plus intuitif.
+   DONE
 
 ----> Les parametres de saturation et de exposedness de l'operation de fusion ne semblent avoir aucun impact lorsque je change les slider dans le UI
 
 ---->  Il semble que les auto tune peuvent definir des valeurs hors des ranges des sliders. Peut-etre les ranges ne sont-t-ils pas bon - en particulier le facteur de profondeur de Beert-Lambert, le auto-tune donne presque toujours un facteur superieur a 1.0
 
+----> revoir la notion de pixels rouges extremes
 
+----> l'auto-tune du re-equilibrage des couleur boost beaucoup les rouges
+
+----> le dump dit "Auto-tuned multiscale_fusion with 7 parameter" mais seulement 4 sont exposés. Aussi plusieurs paramrtres sont toujours a 1.0 avec l'autotune de fusion.

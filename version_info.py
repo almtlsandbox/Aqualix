@@ -5,8 +5,8 @@ Version information file for Aqualix Windows executable
 
 VSVersionInfo(
     ffi=FixedFileInfo(
-        filevers=(1, 0, 0, 0),
-        prodvers=(1, 0, 0, 0),
+        filevers=(2, 0, 0, 0),
+        prodvers=(2, 0, 0, 0),
         mask=0x3f,
         flags=0x0,
         OS=0x4,
@@ -21,12 +21,12 @@ VSVersionInfo(
                 [
                     StringStruct('CompanyName', 'Aqualix Development Team'),
                     StringStruct('FileDescription', 'Aqualix - Underwater Image Processing Application'),
-                    StringStruct('FileVersion', '1.0.0.0'),
+                    StringStruct('FileVersion', '2.0.0.0'),
                     StringStruct('InternalName', 'Aqualix'),
                     StringStruct('LegalCopyright', 'Copyright © 2025 Arnaud Dominique Lina'),
                     StringStruct('OriginalFilename', 'Aqualix.exe'),
                     StringStruct('ProductName', 'Aqualix'),
-                    StringStruct('ProductVersion', '1.0.0'),
+                    StringStruct('ProductVersion', '2.0.0'),
                     StringStruct('LegalTrademarks', ''),
                 ]
             )
